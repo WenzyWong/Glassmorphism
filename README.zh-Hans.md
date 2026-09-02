@@ -110,6 +110,10 @@ build.sh                开发构建
 release.sh              通用二进制 + zip，供 GitHub Release 使用
 ```
 
+## 致谢
+
+使用 [Claude Code](https://claude.ai/code) 协作开发。
+
 ## 许可
 
 MIT，见 [LICENSE](LICENSE)。

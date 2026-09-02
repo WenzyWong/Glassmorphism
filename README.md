@@ -121,6 +121,10 @@ build.sh                development build
 release.sh              universal build + zip for a GitHub release
 ```
 
+## Acknowledgements
+
+Built with [Claude Code](https://claude.ai/code).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
