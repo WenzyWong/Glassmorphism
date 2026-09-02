@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: swift --version
+
+      - name: Build (debug)
+        run: swift build
+
+      - name: Build app bundle
+        run: ./build.sh
+
+      - name: Verify bundle
+        run: |
+          test -x dist/Glassmorphism.app/Contents/MacOS/Glassmorphism
+          test -f dist/Glassmorphism.app/Contents/Resources/AppIcon.icns
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" \
+            dist/Glassmorphism.app/Contents/Info.plist
+          codesign --verify --verbose dist/Glassmorphism.app
