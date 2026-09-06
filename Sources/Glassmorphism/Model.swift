@@ -50,11 +50,13 @@ struct GlassStyle: Equatable {
     var shadowOpacity: Double = 0.30
 
     /// 預設值是絕對像素值；很小的圖上可能超出滑桿範圍，這裡夾回去。
-    static func defaults(for size: CGSize) -> GlassStyle {
+    ///
+    /// - Parameter cornerRadius: 偵測到的圖片自身圓角。傳 0 就是直角（原本的預設）。
+    static func defaults(for size: CGSize, cornerRadius: Double = 0) -> GlassStyle {
         let u = ParamRange.unit(size)
         var s = GlassStyle()
         s.blurRadius   = clamp(s.blurRadius, ParamRange.blur(u))
-        s.cornerRadius = clamp(s.cornerRadius, ParamRange.corner(u))
+        s.cornerRadius = clamp(cornerRadius, ParamRange.corner(u))
         s.borderWidth  = clamp(s.borderWidth, ParamRange.borderWidth(u))
         s.shadowRadius = clamp(s.shadowRadius, ParamRange.shadowRadius(u))
         return s
@@ -135,6 +137,10 @@ final class AppState: ObservableObject {
     @Published var panels: [GlassPanel] = []
     @Published var selection: UUID?
 
+    /// 從圖片本身量到的圓角半徑（原圖像素）。0 代表直角或無法判定。
+    /// 新面板與「重設本面板參數」都會用這個值當圓角預設。
+    @Published private(set) var detectedCornerRadius: Double = 0
+
     /// 介面語言，記在 UserDefaults，下次開啟沿用
     @Published var language: Language = AppState.storedLanguage {
         didSet {
@@ -201,10 +207,16 @@ final class AppState: ObservableObject {
         previewBase = GlassRenderer.downscale(image, maxSide: previewMaxSide)
         GlassRenderer.invalidateCache()
         lastRenderedSpec = nil
+
+        // 圖片自己有圓角的話（例如視窗截圖），面板就沿用同一個圓角
+        detectedCornerRadius = CornerDetector.detect(in: image).rounded()
+
         panels = []
         selection = nil
         addPanel()                      // 新圖預設就帶一塊面板
-        statusMessage = nil
+        statusMessage = detectedCornerRadius > 0
+            ? s.detectedCorners("\(Int(detectedCornerRadius))")
+            : nil
         refreshPreview()
     }
 
@@ -212,7 +224,7 @@ final class AppState: ObservableObject {
 
     func newPanel() -> GlassPanel {
         GlassPanel(rect: cascadeRect(),
-                   style: GlassStyle.defaults(for: imageSize),
+                   style: GlassStyle.defaults(for: imageSize, cornerRadius: detectedCornerRadius),
                    text: TextStyle.defaults(for: imageSize))
     }
 

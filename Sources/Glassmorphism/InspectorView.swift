@@ -86,8 +86,15 @@ struct InspectorView: View {
                         Text("\(Int((r.width * state.imageSize.width).rounded())) × \(Int((r.height * state.imageSize.height).rounded()))")
                             .monospacedDigit()
                     }
+                    LabeledContent(state.s.imageCorners) {
+                        Text(state.detectedCornerRadius > 0
+                             ? "\(Int(state.detectedCornerRadius)) px"
+                             : state.s.noneValue)
+                            .monospacedDigit()
+                    }
                     Button(state.s.resetPanel) {
-                        state.panels[i].style = GlassStyle.defaults(for: state.imageSize)
+                        state.panels[i].style = GlassStyle.defaults(for: state.imageSize,
+                                                                    cornerRadius: state.detectedCornerRadius)
                         let old = state.panels[i].text
                         var t = TextStyle.defaults(for: state.imageSize)
                         t.title = old.title; t.subtitle = old.subtitle   // 保留已輸入的文字

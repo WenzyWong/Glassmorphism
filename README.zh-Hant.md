@@ -10,6 +10,7 @@
 ## 功能
 
 - **多塊面板**：每塊各自持有完整的樣式與文字，互不影響。
+- **自動對齊圖片圓角**：圖片本身有圓角時（例如視窗截圖），會量出半徑並當作面板的預設圓角。
 - **全參數滑桿**：模糊半徑、疊色顏色與濃度、圓角、邊框、雜訊顆粒、外陰影。
 - **面板上可打字**：標題與副標，字型、字級、顏色、對齊都能調。
 - **所見即所得**：預覽與導出走同一個渲染器，畫面上看到什麼，導出就是什麼，只差解析度。
@@ -69,9 +70,13 @@ open dist/Glassmorphism.app
 - **陰影**：開關、擴散、濃度
 - **文字**：標題、副標、字型、標題粗體、標題／副標字級、顏色、對齊、行距、內縮
 
-預設值直接寫在 `GlassStyle` 的屬性初始值上（模糊 30px、疊色 10%、圓角 0、
+預設值直接寫在 `GlassStyle` 的屬性初始值上（模糊 30px、疊色 10%、
 邊框 3px / 50%、陰影開啟 69px / 30%）。這些是絕對像素值，載入很小的圖時會由
 `ParamRange` 夾回滑桿範圍內；文字尺寸則仍隨圖片大小自適應。
+
+圓角是例外：載入圖片時由 `CornerDetector` 量出圖片自身的圓角半徑當作預設，量不到就是 0
+（直角）。它只認 alpha 通道上的透明圓角，也就是視窗截圖或去背素材的樣子；用純色背景畫出來的
+假圓角不會被偵測到。實際量到多少會顯示在「資訊」區。
 
 ## 所見即所得是怎麼做到的
 
@@ -101,11 +106,14 @@ Sources/Glassmorphism/
   Model.swift           GlassPanel、參數模型、滑桿範圍、AppState
   Renderer.swift        CoreGraphics + CoreImage 合成
   Localization.swift    三個語言的字串表
+  CornerDetection.swift 從 alpha 通道量出圖片自身的圓角
 Resources/
   Info.plist            bundle 資訊（__VERSION__ 在建置時代換）
   AppIcon.icns          由 Tools/make-icon.sh 生成
-Samples/sample.png      低飽和的測試底圖，帶細節可檢查模糊效果
-Tools/                  打包與圖示生成
+Samples/
+  sample.png            低飽和的測試底圖，帶細節可檢查模糊效果
+  rounded-window.png    圓角視窗截圖，用來測圓角偵測
+Tools/                  打包、圖示生成、測試（run-tests.sh）
 build.sh                開發建置
 release.sh              通用二進位 + zip，供 GitHub Release 使用
 ```
