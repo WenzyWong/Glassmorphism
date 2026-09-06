@@ -7,12 +7,12 @@ cd "$(dirname "$0")/.."
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-# 圓角偵測的幾何換算夠微妙（少了 √r 修正會固定量短），需要回歸測試
-echo "==> 圓角偵測"
-swiftc -O -o "$WORK/corner-detection" \
-    Sources/Glassmorphism/CornerDetection.swift \
-    Tools/tests/corner-detection/main.swift
-"$WORK/corner-detection"
+# 圖片分析的幾何換算夠微妙（少了 √r 修正會固定量短），需要回歸測試
+echo "==> 圖片分析（內容外框與圓角）"
+swiftc -O -o "$WORK/image-analysis" \
+    Sources/Glassmorphism/ImageAnalysis.swift \
+    Tools/tests/image-analysis/main.swift
+"$WORK/image-analysis"
 
 echo
 echo "==> 磁吸對齊"
@@ -21,6 +21,6 @@ swiftc -O -o "$WORK/snapping" \
     Sources/Glassmorphism/Model.swift \
     Sources/Glassmorphism/Localization.swift \
     Sources/Glassmorphism/Renderer.swift \
-    Sources/Glassmorphism/CornerDetection.swift \
+    Sources/Glassmorphism/ImageAnalysis.swift \
     Tools/tests/snapping/main.swift
 "$WORK/snapping"

@@ -147,7 +147,7 @@ struct CanvasView: View {
                 p.origin.y = min(max(0, start.minY + dy), 1 - start.height)
 
                 if snappingOn {
-                    let targets = Snapping.targets(excluding: id, panels: state.panels)
+                    let targets = Snapping.targets(excluding: id, panels: state.panels, content: state.contentRect)
                     let (tx, ty) = thresholds(in: fitted)
 
                     if let hit = Snapping.snapSpan(min: p.minX, max: p.maxX,
@@ -199,7 +199,7 @@ struct CanvasView: View {
 
                 if snappingOn {
                     let id = state.panels[i].id
-                    let targets = Snapping.targets(excluding: id, panels: state.panels)
+                    let targets = Snapping.targets(excluding: id, panels: state.panels, content: state.contentRect)
                     let (tx, ty) = thresholds(in: fitted)
 
                     // 每個控制點最多只動一條 X 邊、一條 Y 邊，所以兩軸各吸一次就夠

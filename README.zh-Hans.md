@@ -11,6 +11,7 @@
 
 - **多块面板**：每块各自持有完整的样式与文字，互不影响。
 - **自动对齐图片圆角**：图片本身有圆角时（例如窗口截图），会量出半径并作为面板的默认圆角。
+- **认得真正的内容范围**：macOS 的窗口截图在窗口外有一圈透明边与阴影，磁吸会吸到窗口的边，而不是那圈透明边。
 - **全参数滑块**：模糊半径、叠色颜色与浓度、圆角、边框、噪点颗粒、外阴影。
 - **面板上可打字**：标题与副标题，字体、字号、颜色、对齐都能调。
 - **所见即所得**：预览与导出走同一个渲染器，画面上看到什么，导出就是什么，只差分辨率。
@@ -79,9 +80,14 @@ open dist/Glassmorphism.app
 边框 3px / 50%、阴影开启 69px / 30%）。这些是绝对像素值，载入很小的图时会由
 `ParamRange` 夹回滑块范围内；文字尺寸则仍随图片大小自适应。
 
-圆角是例外：载入图片时由 `CornerDetector` 量出图片自身的圆角半径作为默认值，量不到就是 0
+圆角是例外：载入图片时由 `ImageAnalyzer` 量出图片自身的圆角半径作为默认值，量不到就是 0
 （直角）。它只认 alpha 通道上的透明圆角，也就是窗口截图或去背素材的样子；用纯色背景画出来的
 假圆角不会被检测到。实际量到多少会显示在「信息」区。
+
+同一次分析还会找出**内容范围**，也就是实心像素的紧致外框。macOS 的「所选窗口截屏」
+（⌘⇧5）比窗口本身大一圈——外围有透明边和柔和阴影——所以图片的边界并不是窗口的边界。
+凡是跟「边」有关的都改用内容范围：圆角从它量、新面板摆在它里面、拖动时吸到它的边上。
+内容小于整张图时，「信息」区会显示它的尺寸。
 
 ## 所见即所得是怎么做到的
 
@@ -111,7 +117,7 @@ Sources/Glassmorphism/
   Model.swift           GlassPanel、参数模型、滑块范围、AppState
   Renderer.swift        CoreGraphics + CoreImage 合成
   Localization.swift    三个语言的字符串表
-  CornerDetection.swift 从 alpha 通道量出图片自身的圆角
+  ImageAnalysis.swift   从 alpha 通道判读内容范围与圆角
   Snapping.swift        拖动与缩放时的磁吸对齐
 Resources/
   Info.plist            bundle 信息（__VERSION__ 在构建时替换）
@@ -119,6 +125,7 @@ Resources/
 Samples/
   sample.png            低饱和的测试底图，带细节可检查模糊效果
   rounded-window.png    圆角窗口截图，用来测圆角检测
+  window-capture.png    带透明边与阴影的窗口截图
 Tools/                  打包、图标生成、测试（run-tests.sh）
 build.sh                开发构建
 release.sh              通用二进制 + zip，供 GitHub Release 使用

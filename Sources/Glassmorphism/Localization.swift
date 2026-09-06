@@ -91,7 +91,7 @@ struct Strings {
 
     // 資訊
     let originalSize: String, panelSize: String, resetPanel: String
-    let imageCorners: String, noneValue: String
+    let imageCorners: String, noneValue: String, contentArea: String
     let detectedCorners: (String) -> String
 
     // 選單
@@ -131,7 +131,7 @@ extension Strings {
         alignment: "對齊", alignLeft: "靠左", alignCenter: "置中", alignRight: "靠右",
         lineGap: "行距", padding: "內縮",
         originalSize: "原始尺寸", panelSize: "面板尺寸", resetPanel: "重設本面板參數",
-        imageCorners: "圖片圓角", noneValue: "無",
+        imageCorners: "圖片圓角", noneValue: "無", contentArea: "內容範圍",
         detectedCorners: { "偵測到圖片本身有 \($0) px 圓角，已套用為面板預設" },
         menuPanel: "面板", newPanel: "新增面板", duplicatePanel: "複製面板", deletePanel: "刪除面板",
         bringForward: "上移一層", sendBackward: "下移一層",
@@ -168,7 +168,7 @@ extension Strings {
         alignment: "对齐", alignLeft: "左对齐", alignCenter: "居中", alignRight: "右对齐",
         lineGap: "行距", padding: "内边距",
         originalSize: "原始尺寸", panelSize: "面板尺寸", resetPanel: "重置本面板参数",
-        imageCorners: "图片圆角", noneValue: "无",
+        imageCorners: "图片圆角", noneValue: "无", contentArea: "内容范围",
         detectedCorners: { "检测到图片本身有 \($0) px 圆角，已应用为面板默认值" },
         menuPanel: "面板", newPanel: "新建面板", duplicatePanel: "复制面板", deletePanel: "删除面板",
         bringForward: "上移一层", sendBackward: "下移一层",
@@ -205,7 +205,7 @@ extension Strings {
         alignment: "Alignment", alignLeft: "Left", alignCenter: "Center", alignRight: "Right",
         lineGap: "Line gap", padding: "Padding",
         originalSize: "Image size", panelSize: "Panel size", resetPanel: "Reset this panel",
-        imageCorners: "Image corners", noneValue: "None",
+        imageCorners: "Image corners", noneValue: "None", contentArea: "Content area",
         detectedCorners: { "Image has \($0) px rounded corners — applied as the panel default" },
         menuPanel: "Panel", newPanel: "New Panel", duplicatePanel: "Duplicate Panel", deletePanel: "Delete Panel",
         bringForward: "Bring Forward", sendBackward: "Send Backward",

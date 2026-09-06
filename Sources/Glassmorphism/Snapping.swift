@@ -45,11 +45,15 @@ enum Snapping {
         return best
     }
 
-    /// 兩軸的吸附目標：圖片的兩邊與中線，加上其他每一塊面板的兩邊與中線。
-    /// 會排除自己，不然面板永遠吸在原地動不了。
-    static func targets(excluding id: UUID, panels: [GlassPanel]) -> (x: [Double], y: [Double]) {
-        var x: [Double] = [0, 0.5, 1]
-        var y: [Double] = [0, 0.5, 1]
+    /// 兩軸的吸附目標：圖片的兩邊與中線、內容範圍的兩邊與中線，
+    /// 加上其他每一塊面板的兩邊與中線。會排除自己，不然面板永遠吸在原地動不了。
+    ///
+    /// 內容範圍通常等於整張圖，但視窗截圖不是 —— 那時要吸的是視窗的邊，
+    /// 不是外圍那圈透明背景的邊。兩者都留著，重複的值不影響取最近的判斷。
+    static func targets(excluding id: UUID, panels: [GlassPanel],
+                        content: CGRect) -> (x: [Double], y: [Double]) {
+        var x: [Double] = [0, 0.5, 1, content.minX, content.midX, content.maxX]
+        var y: [Double] = [0, 0.5, 1, content.minY, content.midY, content.maxY]
         for panel in panels where panel.id != id {
             let r = panel.rect
             x.append(contentsOf: [r.minX, r.midX, r.maxX])

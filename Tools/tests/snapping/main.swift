@@ -53,7 +53,8 @@ check("取最近那條時參考線也要對", spanGuide(0.015, 0.495, edges, 0.0
 // ── targets：目標清單 ──
 let a = panel(0.1, 0.1, 0.3, 0.2)
 let b = panel(0.6, 0.5, 0.2, 0.2)
-let t = Snapping.targets(excluding: a.id, panels: [a, b])
+let full = CGRect(x: 0, y: 0, width: 1, height: 1)
+let t = Snapping.targets(excluding: a.id, panels: [a, b], content: full)
 
 func has(_ list: [Double], _ v: Double) -> Bool { list.contains { abs($0 - v) < 1e-9 } }
 func flag(_ name: String, _ ok: Bool) {
@@ -67,6 +68,16 @@ flag("含另一塊面板的右緣 0.8", has(t.x, 0.8))
 flag("不含自己的左緣 0.1（否則會吸在原地動不了）", !has(t.x, 0.1))
 flag("Y 軸同樣排除自己的上緣", !has(t.y, 0.1))
 flag("Y 軸含另一塊面板的上緣 0.5", has(t.y, 0.5))
+
+// 視窗截圖：內容範圍小於整張圖，視窗的邊也要是吸附目標
+let window = CGRect(x: 0.08, y: 0.12, width: 0.84, height: 0.80)
+let wt = Snapping.targets(excluding: a.id, panels: [], content: window)
+flag("含視窗左緣 0.08", has(wt.x, 0.08))
+flag("含視窗右緣 0.92", has(wt.x, 0.92))
+flag("含視窗中線 0.50", has(wt.x, 0.5))
+flag("含視窗上緣 0.12", has(wt.y, 0.12))
+flag("含視窗下緣 0.92", has(wt.y, 0.92))
+flag("整張圖的邊也保留著", has(wt.x, 0) && has(wt.x, 1))
 
 print(failures == 0 ? "全部通過" : "\(failures) 項失敗")
 exit(failures == 0 ? 0 : 1)

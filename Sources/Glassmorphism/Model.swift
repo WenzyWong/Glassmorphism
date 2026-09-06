@@ -141,6 +141,19 @@ final class AppState: ObservableObject {
     /// 新面板與「重設本面板參數」都會用這個值當圓角預設。
     @Published private(set) var detectedCornerRadius: Double = 0
 
+    /// 圖片裡實際內容的範圍（歸一化）。整張圖都是實心時就是 0…1 的滿框。
+    ///
+    /// macOS 的「所選視窗截圖」在視窗外還有一圈陰影與透明邊，整張圖的邊界並不是
+    /// 視窗的邊界。圓角要從這個範圍量，磁吸也要吸到這個範圍的邊上，
+    /// 否則會對齊到透明背景的邊緣。
+    @Published private(set) var contentRect = CGRect(x: 0, y: 0, width: 1, height: 1)
+
+    /// 內容範圍是否小於整張圖
+    var contentIsInset: Bool {
+        contentRect.minX > 0.001 || contentRect.minY > 0.001
+            || contentRect.maxX < 0.999 || contentRect.maxY < 0.999
+    }
+
     /// 介面語言，記在 UserDefaults，下次開啟沿用
     @Published var language: Language = AppState.storedLanguage {
         didSet {
@@ -209,7 +222,10 @@ final class AppState: ObservableObject {
         lastRenderedSpec = nil
 
         // 圖片自己有圓角的話（例如視窗截圖），面板就沿用同一個圓角
-        detectedCornerRadius = CornerDetector.detect(in: image).rounded()
+        let analysis = ImageAnalyzer.analyze(image)
+        detectedCornerRadius = analysis.cornerRadius.rounded()
+        contentRect = normalized(analysis.contentBounds,
+                                 in: CGSize(width: image.width, height: image.height))
 
         panels = []
         selection = nil
@@ -261,12 +277,20 @@ final class AppState: ObservableObject {
         panels.swapAt(i, j)
     }
 
+    /// 新面板擺在內容範圍裡，而不是整張圖裡 —— 視窗截圖的話才不會壓在透明邊上
     private func cascadeRect() -> CGRect {
-        let w = 0.5, h = 0.28
+        let c = contentRect
+        let w = c.width * 0.5, h = c.height * 0.28
         let step = 0.045 * Double(panels.count)
-        return CGRect(x: min(0.10 + step, 1 - w),
-                      y: min(0.14 + step, 1 - h),
+        return CGRect(x: min(c.minX + c.width * 0.10 + step * c.width, c.maxX - w),
+                      y: min(c.minY + c.height * 0.14 + step * c.height, c.maxY - h),
                       width: w, height: h)
+    }
+
+    private func normalized(_ rect: CGRect, in size: CGSize) -> CGRect {
+        guard size.width > 0, size.height > 0 else { return CGRect(x: 0, y: 0, width: 1, height: 1) }
+        return CGRect(x: rect.minX / size.width, y: rect.minY / size.height,
+                      width: rect.width / size.width, height: rect.height / size.height)
     }
 
     private func offset(_ r: CGRect, by d: Double) -> CGRect {

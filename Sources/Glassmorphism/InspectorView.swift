@@ -86,6 +86,14 @@ struct InspectorView: View {
                         Text("\(Int((r.width * state.imageSize.width).rounded())) × \(Int((r.height * state.imageSize.height).rounded()))")
                             .monospacedDigit()
                     }
+                    // 只在內容小於整張圖時顯示（視窗截圖那類），平常沒必要佔一行
+                    if state.contentIsInset {
+                        LabeledContent(state.s.contentArea) {
+                            let c = state.contentRect
+                            Text("\(Int((c.width * state.imageSize.width).rounded())) × \(Int((c.height * state.imageSize.height).rounded()))")
+                                .monospacedDigit()
+                        }
+                    }
                     LabeledContent(state.s.imageCorners) {
                         Text(state.detectedCornerRadius > 0
                              ? "\(Int(state.detectedCornerRadius)) px"

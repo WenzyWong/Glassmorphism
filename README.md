@@ -13,6 +13,8 @@ export at the **original resolution**.
 - **Multiple panels.** Each panel carries its own style and text, independent of the others.
 - **Matches the image's own corners.** If the image itself has rounded corners — a window
   screenshot, say — the radius is measured and used as the panel default.
+- **Finds the real content.** A macOS window capture carries a transparent margin and a
+  drop shadow around the window; panels snap to the window's edges, not the margin's.
 - **Everything is a slider.** Blur radius, tint colour and opacity, corner radius, border,
   noise grain, drop shadow.
 - **Text on the glass.** Title and subtitle, with font, size, colour and alignment.
@@ -88,11 +90,18 @@ border 3 px at 50%, shadow on at 69 px / 30%). These are absolute pixel values, 
 very small image they are clamped back into slider range by `ParamRange`. Text sizes
 scale with the image instead.
 
-The corner radius is the exception: `CornerDetector` measures the image's own corners on
+The corner radius is the exception: `ImageAnalyzer` measures the image's own corners on
 load and that becomes the default, falling back to 0 (square) when there are none. It
 only recognises transparent corners in the alpha channel, which is what a window
 screenshot or a cut-out asset looks like — rounded corners faked with a solid background
 colour are not detected. The Info section shows what was measured.
+
+The same pass finds the **content bounds**: the tight box of solid pixels. A macOS window
+capture (⌘⇧5 → capture a window) is larger than the window itself — there is a transparent
+margin and a soft drop shadow around it — so the image's edges are not the window's edges.
+Everything that cares about edges uses the content bounds: the corner radius is measured
+from them, new panels are placed inside them, and dragging snaps to them. When the content
+is smaller than the image, the Info section shows its size.
 
 ## How the WYSIWYG works
 
@@ -126,7 +135,7 @@ Sources/Glassmorphism/
   Model.swift           GlassPanel, parameter models, slider ranges, AppState
   Renderer.swift        CoreGraphics + CoreImage compositing
   Localization.swift    the three language tables
-  CornerDetection.swift the image's own corner radius, measured from the alpha channel
+  ImageAnalysis.swift   content bounds and corner radius, read from the alpha channel
   Snapping.swift        magnetic alignment while dragging and resizing
 Resources/
   Info.plist            bundle metadata (__VERSION__ is substituted at build time)
@@ -134,6 +143,7 @@ Resources/
 Samples/
   sample.png            a muted test image with fine detail for judging blur
   rounded-window.png    a rounded-corner screenshot for testing corner detection
+  window-capture.png    a window capture with a transparent margin and shadow
 Tools/                  bundling, icon generation, tests (run-tests.sh)
 build.sh                development build
 release.sh              universal build + zip for a GitHub release
