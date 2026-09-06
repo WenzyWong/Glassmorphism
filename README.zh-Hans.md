@@ -52,6 +52,7 @@ open dist/Glassmorphism.app
 | 选中面板 | 在画布上点该面板，或点右侧列表 |
 | 移动面板 | 直接拖动 |
 | 缩放面板 | 拖动 8 个控制点的任意一个 |
+| 临时关掉磁吸 | 拖动时按住 ⌥ |
 | 新建面板 | ⌘N |
 | 复制面板 | ⌘D |
 | 删除面板 | ⌘⌫ |
@@ -60,6 +61,10 @@ open dist/Glassmorphism.app
 | 复制 | ⇧⌘C（原图尺寸） |
 
 未选中的面板是白色虚线框，选中的是实线框加 8 个控制点。
+
+移动与缩放都会磁吸对齐：目标是图片的四边与中线，以及其他面板的边与中线，吸住时会用洋红色
+画出参考线。吸附距离是**画面上的 8 个点**而不是图片的某个比例，所以窗口放大缩小手感都一样。
+要微调时按住 ⌥ 可以临时关掉。
 
 ## 参数
 
@@ -107,6 +112,7 @@ Sources/Glassmorphism/
   Renderer.swift        CoreGraphics + CoreImage 合成
   Localization.swift    三个语言的字符串表
   CornerDetection.swift 从 alpha 通道量出图片自身的圆角
+  Snapping.swift        拖动与缩放时的磁吸对齐
 Resources/
   Info.plist            bundle 信息（__VERSION__ 在构建时替换）
   AppIcon.icns          由 Tools/make-icon.sh 生成

@@ -42,7 +42,14 @@ struct CanvasView: View {
     /// 位移量被重複扣掉，面板就只跟著游標走一半 —— 也就是「不跟手」。
     private static let canvasSpace = "canvas"
 
+    /// 這次拖動吸住的參考線位置（歸一化）。沒吸住就是 nil，拖完清掉。
+    @State private var guideX: Double?
+    @State private var guideY: Double?
+
     private let minSize: CGFloat = 0.02   // 面板最小邊長（歸一化）
+
+    /// 按住 ⌥ 暫時關掉磁吸，要微調時用
+    private var snappingOn: Bool { !NSEvent.modifierFlags.contains(.option) }
 
     var body: some View {
         GeometryReader { geo in
@@ -105,7 +112,25 @@ struct CanvasView: View {
                     .gesture(resizeGesture(index: i, handle: handle, fitted: fitted))
             }
         }
+
+        // 吸附參考線。用洋紅色而不是 accent，才不會跟選取框混在一起。
+        if let gx = guideX {
+            Rectangle()
+                .fill(Self.guideColor)
+                .frame(width: 1, height: fitted.height)
+                .position(x: fitted.minX + gx * fitted.width, y: fitted.midY)
+                .allowsHitTesting(false)
+        }
+        if let gy = guideY {
+            Rectangle()
+                .fill(Self.guideColor)
+                .frame(width: fitted.width, height: 1)
+                .position(x: fitted.midX, y: fitted.minY + gy * fitted.height)
+                .allowsHitTesting(false)
+        }
     }
+
+    private static let guideColor = Color(red: 1.0, green: 0.19, blue: 0.55)
 
     private func moveGesture(id: UUID, fitted: CGRect) -> some Gesture {
         // minimumDistance 0：按下當下就選中，不用先拖動
@@ -120,10 +145,39 @@ struct CanvasView: View {
                 var p = start
                 p.origin.x = min(max(0, start.minX + dx), 1 - start.width)
                 p.origin.y = min(max(0, start.minY + dy), 1 - start.height)
+
+                if snappingOn {
+                    let targets = Snapping.targets(excluding: id, panels: state.panels)
+                    let (tx, ty) = thresholds(in: fitted)
+
+                    if let hit = Snapping.snapSpan(min: p.minX, max: p.maxX,
+                                                   to: targets.x, threshold: tx) {
+                        let snapped = p.minX + hit.offset
+                        let clamped = min(max(0, snapped), 1 - p.width)
+                        p.origin.x = clamped
+                        // 被邊界夾回去就代表其實沒對齊上，別畫誤導人的參考線
+                        guideX = abs(clamped - snapped) < 1e-9 ? hit.guide : nil
+                    } else {
+                        guideX = nil
+                    }
+
+                    if let hit = Snapping.snapSpan(min: p.minY, max: p.maxY,
+                                                   to: targets.y, threshold: ty) {
+                        let snapped = p.minY + hit.offset
+                        let clamped = min(max(0, snapped), 1 - p.height)
+                        p.origin.y = clamped
+                        guideY = abs(clamped - snapped) < 1e-9 ? hit.guide : nil
+                    } else {
+                        guideY = nil
+                    }
+                } else {
+                    guideX = nil; guideY = nil
+                }
+
                 state.panels[i].rect = p
                 state.refreshPreview()
             }
-            .onEnded { _ in dragOrigin = nil }
+            .onEnded { _ in endDrag() }
     }
 
     private func resizeGesture(index i: Int, handle: Handle, fitted: CGRect) -> some Gesture {
@@ -143,10 +197,53 @@ struct CanvasView: View {
                 if handle.movesTop    { top    = min(max(0, start.minY + dy), bottom - minSize) }
                 if handle.movesBottom { bottom = max(min(1, start.maxY + dy), top + minSize) }
 
+                if snappingOn {
+                    let id = state.panels[i].id
+                    let targets = Snapping.targets(excluding: id, panels: state.panels)
+                    let (tx, ty) = thresholds(in: fitted)
+
+                    // 每個控制點最多只動一條 X 邊、一條 Y 邊，所以兩軸各吸一次就夠
+                    guideX = nil
+                    if handle.movesLeft, let v = Snapping.snap(left, to: targets.x, threshold: tx) {
+                        let clamped = min(max(0, v), right - minSize)
+                        left = clamped
+                        guideX = abs(clamped - v) < 1e-9 ? v : nil
+                    } else if handle.movesRight, let v = Snapping.snap(right, to: targets.x, threshold: tx) {
+                        let clamped = max(min(1, v), left + minSize)
+                        right = clamped
+                        guideX = abs(clamped - v) < 1e-9 ? v : nil
+                    }
+
+                    guideY = nil
+                    if handle.movesTop, let v = Snapping.snap(top, to: targets.y, threshold: ty) {
+                        let clamped = min(max(0, v), bottom - minSize)
+                        top = clamped
+                        guideY = abs(clamped - v) < 1e-9 ? v : nil
+                    } else if handle.movesBottom, let v = Snapping.snap(bottom, to: targets.y, threshold: ty) {
+                        let clamped = max(min(1, v), top + minSize)
+                        bottom = clamped
+                        guideY = abs(clamped - v) < 1e-9 ? v : nil
+                    }
+                } else {
+                    guideX = nil; guideY = nil
+                }
+
                 state.panels[i].rect = CGRect(x: left, y: top, width: right - left, height: bottom - top)
                 state.refreshPreview()
             }
-            .onEnded { _ in dragOrigin = nil }
+            .onEnded { _ in endDrag() }
+    }
+
+    private func endDrag() {
+        dragOrigin = nil
+        guideX = nil
+        guideY = nil
+    }
+
+    /// 把「畫面上 8 個點」換算成兩軸各自的歸一化門檻
+    private func thresholds(in fitted: CGRect) -> (Double, Double) {
+        (Double(Snapping.distance / max(fitted.width, 1)),
+         Double(Snapping.distance / max(fitted.height, 1)))
     }
 
     // MARK: - 座標換算
