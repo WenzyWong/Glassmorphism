@@ -10,9 +10,13 @@ struct InspectorView: View {
         VStack(spacing: 0) {
             PanelListView(state: state)
             Divider()
+            PhotoListView(state: state)
+            Divider()
 
             if let index = state.selectedIndex {
                 parameters(index: index)
+            } else if let index = state.selectedPhotoIndex {
+                photoParameters(index: index)
             } else {
                 Spacer()
                 Text(state.hasImage ? state.s.noSelection : state.s.noImage)
@@ -112,6 +116,65 @@ struct InspectorView: View {
             }
             .padding(16)
         }
+    }
+
+    // MARK: - 選中圖片的參數
+
+    @ViewBuilder
+    private func photoParameters(index i: Int) -> some View {
+        let photo = $state.photos[i]
+        let unitValue = unit
+
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                section(state.s.sectionPhoto) {
+                    slider(state.s.photoSize, photo.widthFraction,
+                           PhotoLayer.Range.widthFraction, percent: true)
+                    slider(state.s.rotation, photo.rotation,
+                           PhotoLayer.Range.rotation, unit: "°")
+                    HStack(spacing: 6) {
+                        Button(state.s.rotateLeft) { turn(i, by: -90) }
+                        Button(state.s.rotateRight) { turn(i, by: 90) }
+                        Button(state.s.resetRotation) { state.photos[i].rotation = 0 }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    slider(state.s.photoOpacity, photo.opacity,
+                           PhotoLayer.Range.opacity, percent: true)
+                }
+
+                section(state.s.sectionShadow) {
+                    Toggle(state.s.shadowEnabled, isOn: photo.shadowEnabled)
+                    slider(state.s.spread, photo.shadowRadius,
+                           PhotoLayer.Range.shadowRadius(unitValue), unit: "px")
+                        .disabled(!state.photos[i].shadowEnabled)
+                    slider(state.s.strength, photo.shadowOpacity,
+                           PhotoLayer.Range.shadowOpacity, percent: true)
+                        .disabled(!state.photos[i].shadowEnabled)
+                }
+
+                section(state.s.sectionInfo) {
+                    LabeledContent(state.s.originalSize) {
+                        Text("\(state.photos[i].image.width) × \(state.photos[i].image.height)")
+                            .monospacedDigit()
+                    }
+                    LabeledContent(state.s.panelSize) {
+                        let px = state.photos[i].pixelSize(inBase: state.imageSize)
+                        Text("\(Int(px.width.rounded())) × \(Int(px.height.rounded()))")
+                            .monospacedDigit()
+                    }
+                }
+            }
+            .padding(16)
+        }
+    }
+
+    /// 以 90° 為單位轉，並收攏到 -180…180
+    private func turn(_ i: Int, by degrees: Double) {
+        var next = (state.photos[i].rotation + degrees).truncatingRemainder(dividingBy: 360)
+        if next > 180 { next -= 360 }
+        if next <= -180 { next += 360 }
+        state.photos[i].rotation = next
     }
 
     // MARK: - 小元件
@@ -244,6 +307,83 @@ private struct PanelListView: View {
         .foregroundStyle(selected ? Color.white : Color.primary)
         .contentShape(Rectangle())
         .onTapGesture { state.selection = panel.id }
+    }
+}
+
+/// 拼貼圖片的清單
+private struct PhotoListView: View {
+    @ObservedObject var state: AppState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(state.s.photos).font(.headline)
+                Spacer()
+                Text("\(state.photos.count)")
+                    .font(.caption).monospacedDigit().foregroundStyle(.secondary)
+            }
+
+            if state.photos.isEmpty {
+                Text(state.s.dropAddsPhoto)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                ScrollView {
+                    VStack(spacing: 2) {
+                        // 由上往下顯示最上層的，和畫面上的疊放順序一致
+                        ForEach(Array(state.photos.enumerated().reversed()), id: \.element.id) { index, photo in
+                            row(index: index, photo: photo)
+                        }
+                    }
+                }
+                .frame(height: 72)
+            }
+
+            HStack(spacing: 6) {
+                Button { addPhoto() } label: { Label(state.s.addPhoto, systemImage: "photo.badge.plus") }
+                    .help(state.s.addPhotoHelp)
+                Button { state.duplicateSelected() } label: { Image(systemName: "plus.square.on.square") }
+                    .disabled(state.selectedPhotoIndex == nil)
+                Button { state.deleteSelected() } label: { Image(systemName: "trash") }
+                    .disabled(state.selectedPhotoIndex == nil)
+                Spacer()
+                Button { state.moveSelected(up: true) } label: { Image(systemName: "arrow.up") }
+                    .disabled(state.selectedPhotoIndex == nil
+                              || state.selectedPhotoIndex == state.photos.count - 1)
+                Button { state.moveSelected(up: false) } label: { Image(systemName: "arrow.down") }
+                    .disabled(state.selectedPhotoIndex == nil || state.selectedPhotoIndex == 0)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .disabled(!state.hasImage)
+        }
+        .padding(12)
+    }
+
+    private func row(index: Int, photo: PhotoLayer) -> some View {
+        let selected = photo.id == state.selection
+        return HStack(spacing: 6) {
+            Image(systemName: "photo")
+                .foregroundStyle(selected ? Color.white : Color.secondary)
+            Text(photo.name).lineLimit(1).truncationMode(.middle)
+            Spacer()
+        }
+        .font(.callout)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .background(selected ? Color.accentColor : Color.clear, in: RoundedRectangle(cornerRadius: 5))
+        .foregroundStyle(selected ? Color.white : Color.primary)
+        .contentShape(Rectangle())
+        .onTapGesture { state.selection = photo.id }
+    }
+
+    private func addPhoto() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.image]
+        panel.allowsMultipleSelection = true
+        guard panel.runModal() == .OK else { return }
+        for url in panel.urls { state.addPhoto(url: url) }
     }
 }
 

@@ -17,6 +17,14 @@ struct GlassApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var state = AppState()
 
+    private func addPhoto() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.image]
+        panel.allowsMultipleSelection = true
+        guard panel.runModal() == .OK else { return }
+        for url in panel.urls { state.addPhoto(url: url) }
+    }
+
     var body: some Scene {
         WindowGroup(state.s.windowTitle) {
             ContentView(state: state)
@@ -28,6 +36,11 @@ struct GlassApp: App {
             CommandGroup(replacing: .newItem) {
                 Button(state.s.newPanel) { state.addPanel() }
                     .keyboardShortcut("n", modifiers: .command)
+                    .disabled(!state.hasImage)
+            }
+            CommandGroup(after: .newItem) {
+                Button(state.s.addPhoto) { addPhoto() }
+                    .keyboardShortcut("o", modifiers: [.command, .shift])
                     .disabled(!state.hasImage)
             }
             CommandMenu(state.s.menuPanel) {

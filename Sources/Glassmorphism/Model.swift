@@ -120,8 +120,12 @@ struct GlassPanel: Identifiable, Equatable {
 }
 
 struct RenderSpec: Equatable {
+    /// 拼貼進來的圖片。畫在底圖之上、毛玻璃之下。
+    var photos: [PhotoLayer] = []
     /// 陣列順序即繪製順序：後面的疊在前面的之上
     var panels: [GlassPanel]
+    /// 底圖的原始像素尺寸，圖片層算旋轉外框時需要
+    var baseSize: CGSize = .zero
 }
 
 // MARK: - App 狀態
@@ -135,6 +139,13 @@ final class AppState: ObservableObject {
     @Published private(set) var sourceName: String = ""
 
     @Published var panels: [GlassPanel] = []
+
+    /// 拼貼進來的圖片。畫在底圖之上、毛玻璃之下 ——
+    /// 玻璃要能模糊拼貼上去的圖，反過來把圖疊在玻璃上則沒什麼實際用途。
+    @Published var photos: [PhotoLayer] = []
+
+    /// 目前選中的物件。面板與圖片共用同一個選取，UUID 不會撞號，
+    /// 所以直接拿它到兩個陣列裡各找一次就好。
     @Published var selection: UUID?
 
     /// 從圖片本身量到的圓角半徑（原圖像素）。0 代表直角或無法判定。
@@ -189,11 +200,21 @@ final class AppState: ObservableObject {
     }
 
     var hasImage: Bool { original != nil }
-    var spec: RenderSpec { RenderSpec(panels: panels) }
 
+    var spec: RenderSpec {
+        RenderSpec(photos: photos, panels: panels, baseSize: imageSize)
+    }
+
+    /// 選中的面板在 panels 裡的索引
     var selectedIndex: Int? {
         guard let selection else { return nil }
         return panels.firstIndex { $0.id == selection }
+    }
+
+    /// 選中的圖片在 photos 裡的索引
+    var selectedPhotoIndex: Int? {
+        guard let selection else { return nil }
+        return photos.firstIndex { $0.id == selection }
     }
 
     /// 預覽底圖相對原圖的縮放係數
@@ -228,6 +249,7 @@ final class AppState: ObservableObject {
                                  in: CGSize(width: image.width, height: image.height))
 
         panels = []
+        photos = []
         selection = nil
         addPanel()                      // 新圖預設就帶一塊面板
         statusMessage = detectedCornerRadius > 0
@@ -254,27 +276,69 @@ final class AppState: ObservableObject {
     }
 
     func duplicateSelected() {
-        guard let i = selectedIndex else { return }
-        var copy = panels[i]
-        copy.id = UUID()
-        // 稍微錯開，免得完全疊住看不出來
-        copy.rect = offset(copy.rect, by: 0.03)
-        panels.insert(copy, at: i + 1)
-        selection = copy.id
+        if let i = selectedIndex {
+            var copy = panels[i]
+            copy.id = UUID()
+            // 稍微錯開，免得完全疊住看不出來
+            copy.rect = offset(copy.rect, by: 0.03)
+            panels.insert(copy, at: i + 1)
+            selection = copy.id
+        } else if let i = selectedPhotoIndex {
+            var copy = photos[i]
+            copy.id = UUID()
+            copy.center = CGPoint(x: min(copy.center.x + 0.03, 1),
+                                  y: min(copy.center.y + 0.03, 1))
+            photos.insert(copy, at: i + 1)
+            selection = copy.id
+        }
     }
 
     func deleteSelected() {
-        guard let i = selectedIndex else { return }
-        panels.remove(at: i)
-        selection = panels.isEmpty ? nil : panels[min(i, panels.count - 1)].id
+        if let i = selectedIndex {
+            panels.remove(at: i)
+            selection = panels.isEmpty ? nil : panels[min(i, panels.count - 1)].id
+        } else if let i = selectedPhotoIndex {
+            photos.remove(at: i)
+            selection = photos.isEmpty ? nil : photos[min(i, photos.count - 1)].id
+        }
     }
 
-    /// 把選中的面板往上/下移一層（影響互相遮蓋的順序）
+    /// 把選中的物件往上/下移一層（影響互相遮蓋的順序）
     func moveSelected(up: Bool) {
-        guard let i = selectedIndex else { return }
-        let j = up ? i + 1 : i - 1
-        guard panels.indices.contains(j) else { return }
-        panels.swapAt(i, j)
+        if let i = selectedIndex {
+            let j = up ? i + 1 : i - 1
+            guard panels.indices.contains(j) else { return }
+            panels.swapAt(i, j)
+        } else if let i = selectedPhotoIndex {
+            let j = up ? i + 1 : i - 1
+            guard photos.indices.contains(j) else { return }
+            photos.swapAt(i, j)
+        }
+    }
+
+    // MARK: 圖片層
+
+    /// 拖進來的圖片會變成一層拼貼，而不是換掉底圖（換底圖走 ⌘O）
+    func addPhoto(url: URL) {
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let img = CGImageSourceCreateImageAtIndex(src, 0, nil) else {
+            statusMessage = s.errorRead
+            return
+        }
+        addPhoto(image: img, name: url.lastPathComponent)
+    }
+
+    func addPhoto(image: CGImage, name: String) {
+        guard hasImage else {                 // 還沒有底圖的話，第一張就當底圖
+            load(image: image, name: name)
+            return
+        }
+        let preview = GlassRenderer.downscale(image, maxSide: previewMaxSide)
+        let layer = PhotoLayer.make(image: image, preview: preview, name: name,
+                                    baseSize: imageSize, index: photos.count)
+        photos.append(layer)
+        selection = layer.id
+        statusMessage = s.photoAdded(name)
     }
 
     /// 新面板擺在內容範圍裡，而不是整張圖裡 —— 視窗截圖的話才不會壓在透明邊上

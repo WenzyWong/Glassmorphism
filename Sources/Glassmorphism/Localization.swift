@@ -92,6 +92,14 @@ struct Strings {
     // 資訊
     let originalSize: String, panelSize: String, resetPanel: String
     let imageCorners: String, noneValue: String, contentArea: String
+
+    // 圖片層
+    let photos: String, addPhoto: String, addPhotoHelp: String
+    let photoAdded: (String) -> String
+    let sectionPhoto: String
+    let rotation: String, photoSize: String, photoOpacity: String
+    let rotateLeft: String, rotateRight: String, resetRotation: String
+    let dropAddsPhoto: String
     let detectedCorners: (String) -> String
 
     // 選單
@@ -132,6 +140,12 @@ extension Strings {
         lineGap: "行距", padding: "內縮",
         originalSize: "原始尺寸", panelSize: "面板尺寸", resetPanel: "重設本面板參數",
         imageCorners: "圖片圓角", noneValue: "無", contentArea: "內容範圍",
+        photos: "拼貼圖片", addPhoto: "加入圖片", addPhotoHelp: "加入拼貼圖片 (⇧⌘O)",
+        photoAdded: { "已加入 \($0)" },
+        sectionPhoto: "圖片",
+        rotation: "旋轉", photoSize: "大小", photoOpacity: "不透明度",
+        rotateLeft: "左轉 90°", rotateRight: "右轉 90°", resetRotation: "轉正",
+        dropAddsPhoto: "再拖圖片進來會成為拼貼層（換底圖請用 ⌘O）",
         detectedCorners: { "偵測到圖片本身有 \($0) px 圓角，已套用為面板預設" },
         menuPanel: "面板", newPanel: "新增面板", duplicatePanel: "複製面板", deletePanel: "刪除面板",
         bringForward: "上移一層", sendBackward: "下移一層",
@@ -169,6 +183,12 @@ extension Strings {
         lineGap: "行距", padding: "内边距",
         originalSize: "原始尺寸", panelSize: "面板尺寸", resetPanel: "重置本面板参数",
         imageCorners: "图片圆角", noneValue: "无", contentArea: "内容范围",
+        photos: "拼贴图片", addPhoto: "加入图片", addPhotoHelp: "加入拼贴图片 (⇧⌘O)",
+        photoAdded: { "已加入 \($0)" },
+        sectionPhoto: "图片",
+        rotation: "旋转", photoSize: "大小", photoOpacity: "不透明度",
+        rotateLeft: "左转 90°", rotateRight: "右转 90°", resetRotation: "转正",
+        dropAddsPhoto: "再拖图片进来会成为拼贴层（换底图请用 ⌘O）",
         detectedCorners: { "检测到图片本身有 \($0) px 圆角，已应用为面板默认值" },
         menuPanel: "面板", newPanel: "新建面板", duplicatePanel: "复制面板", deletePanel: "删除面板",
         bringForward: "上移一层", sendBackward: "下移一层",
@@ -206,6 +226,12 @@ extension Strings {
         lineGap: "Line gap", padding: "Padding",
         originalSize: "Image size", panelSize: "Panel size", resetPanel: "Reset this panel",
         imageCorners: "Image corners", noneValue: "None", contentArea: "Content area",
+        photos: "Collage", addPhoto: "Add image", addPhotoHelp: "Add a collage image (⇧⌘O)",
+        photoAdded: { "Added \($0)" },
+        sectionPhoto: "Image",
+        rotation: "Rotation", photoSize: "Size", photoOpacity: "Opacity",
+        rotateLeft: "Rotate left 90°", rotateRight: "Rotate right 90°", resetRotation: "Straighten",
+        dropAddsPhoto: "Dropping another image adds a collage layer (⌘O replaces the base)",
         detectedCorners: { "Image has \($0) px rounded corners — applied as the panel default" },
         menuPanel: "Panel", newPanel: "New Panel", duplicatePanel: "Duplicate Panel", deletePanel: "Delete Panel",
         bringForward: "Bring Forward", sendBackward: "Send Backward",

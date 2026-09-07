@@ -18,9 +18,34 @@ echo
 echo "==> 磁吸對齊"
 swiftc -O -o "$WORK/snapping" \
     Sources/Glassmorphism/Snapping.swift \
+    Sources/Glassmorphism/PhotoLayer.swift \
     Sources/Glassmorphism/Model.swift \
     Sources/Glassmorphism/Localization.swift \
     Sources/Glassmorphism/Renderer.swift \
     Sources/Glassmorphism/ImageAnalysis.swift \
     Tools/tests/snapping/main.swift
 "$WORK/snapping"
+
+echo
+echo "==> 圖片層幾何與角度磁吸"
+swiftc -O -o "$WORK/photo-layer" \
+    Sources/Glassmorphism/PhotoLayer.swift \
+    Sources/Glassmorphism/Snapping.swift \
+    Sources/Glassmorphism/Model.swift \
+    Sources/Glassmorphism/Localization.swift \
+    Sources/Glassmorphism/Renderer.swift \
+    Sources/Glassmorphism/ImageAnalysis.swift \
+    Tools/tests/photo-layer/main.swift
+"$WORK/photo-layer"
+
+echo
+echo "==> AppState：拖放路由與圖層增刪"
+swiftc -O -o "$WORK/app-state" \
+    Sources/Glassmorphism/Model.swift \
+    Sources/Glassmorphism/PhotoLayer.swift \
+    Sources/Glassmorphism/Localization.swift \
+    Sources/Glassmorphism/Renderer.swift \
+    Sources/Glassmorphism/ImageAnalysis.swift \
+    Sources/Glassmorphism/Snapping.swift \
+    Tools/tests/app-state/main.swift
+"$WORK/app-state"

@@ -32,11 +32,51 @@ enum GlassRenderer {
         ctx.interpolationQuality = .high
         ctx.draw(base, in: fullRect)
 
-        // 依陣列順序疊加，後面的蓋在前面的之上
+        // 拼貼的圖片先畫，依陣列順序疊加
+        for photo in spec.photos {
+            draw(photo: photo, ctx: ctx, fullRect: fullRect, scale: scale)
+        }
+
+        // 毛玻璃模糊的取樣來源是「底圖 + 所有圖片層」合成後的畫面，
+        // 而不是原始底圖 —— 否則玻璃壓在拼貼圖上時，透出來的會是被蓋住的原圖。
+        // 沒有圖片層時就直接用 base，省掉一次快照。
+        let backdrop = spec.photos.isEmpty ? base : (ctx.makeImage() ?? base)
+
         for panel in spec.panels {
-            draw(panel: panel, ctx: ctx, base: base, fullRect: fullRect, scale: scale)
+            draw(panel: panel, ctx: ctx, base: backdrop, fullRect: fullRect, scale: scale)
         }
         return ctx.makeImage()
+    }
+
+    // MARK: - 圖片層
+
+    private static func draw(photo: PhotoLayer, ctx: CGContext, fullRect: CGRect, scale: CGFloat) {
+        let baseSize = CGSize(width: fullRect.width / scale, height: fullRect.height / scale)
+        let px = photo.pixelSize(inBase: baseSize)
+        let w = px.width * scale, h = px.height * scale
+        guard w >= 1, h >= 1 else { return }
+
+        // 歸一化（左上原點）→ CGContext 座標（左下原點）
+        let cx = photo.center.x * fullRect.width
+        let cy = (1 - photo.center.y) * fullRect.height
+
+        ctx.saveGState()
+        ctx.translateBy(x: cx, y: cy)
+        // rotation 是「畫面上看到的順時針角度」，CGContext 的 y 軸向上，
+        // 正角度是逆時針，所以要取負號。
+        ctx.rotate(by: -photo.rotation * .pi / 180)
+
+        if photo.opacity < 1 { ctx.setAlpha(photo.opacity) }
+        if photo.shadowEnabled, photo.shadowOpacity > 0.001, photo.shadowRadius > 0.1 {
+            let blur = photo.shadowRadius * scale
+            ctx.setShadow(offset: CGSize(width: 0, height: -blur * 0.25), blur: blur,
+                          color: NSColor.black.withAlphaComponent(photo.shadowOpacity).cgColor)
+        }
+
+        // 預覽用縮圖：把大圖每幀縮到小框重取樣太慢
+        let source = scale < 0.999 ? photo.preview : photo.image
+        ctx.draw(source, in: CGRect(x: -w / 2, y: -h / 2, width: w, height: h))
+        ctx.restoreGState()
     }
 
     private static func draw(panel: GlassPanel, ctx: CGContext, base: CGImage,
@@ -53,8 +93,9 @@ enum GlassRenderer {
         let corner = min(style.cornerRadius * scale, min(rect.width, rect.height) / 2)
         let path = CGPath(roundedRect: rect, cornerWidth: corner, cornerHeight: corner, transform: nil)
 
-        // 注意：模糊取樣的來源是「原始底圖」，不是已經畫上前幾塊面板的畫布。
-        // 兩塊面板重疊時，上面那塊看到的是原圖的模糊，不會把下面那塊的疊色再模糊一次。
+        // 注意：模糊取樣的來源是「底圖 + 圖片層」的合成結果，不含任何毛玻璃面板。
+        // 兩塊面板重疊時，上面那塊看到的是底下畫面的模糊，
+        // 不會把下面那塊的疊色再模糊一次。
         drawShadow(ctx: ctx, path: path, fullRect: fullRect, style: style, scale: scale)
         drawGlass(ctx: ctx, base: base, path: path, rect: rect, fullRect: fullRect, style: style, scale: scale)
         drawBorder(ctx: ctx, rect: rect, corner: corner, style: style, scale: scale)

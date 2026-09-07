@@ -67,14 +67,20 @@ struct ContentView: View {
     // MARK: - 載入
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
-        guard let provider = providers.first else { return false }
+        // 一次拖多張就全部收進來，依序變成拼貼層
+        for provider in providers { accept(provider) }
+        return !providers.isEmpty
+    }
+
+    private func accept(_ provider: NSItemProvider) {
 
         if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
             _ = provider.loadObject(ofClass: URL.self) { url, _ in
                 guard let url else { return }
-                DispatchQueue.main.async { state.load(url: url) }
+                // 已經有底圖了就當成拼貼層加進去；要換底圖請用 ⌘O
+                DispatchQueue.main.async { state.addPhoto(url: url) }
             }
-            return true
+            return
         }
 
         // 從瀏覽器等來源直接拖圖（沒有檔案路徑）
@@ -82,9 +88,8 @@ struct ContentView: View {
             guard let data,
                   let src = CGImageSourceCreateWithData(data as CFData, nil),
                   let img = CGImageSourceCreateImageAtIndex(src, 0, nil) else { return }
-            DispatchQueue.main.async { state.load(image: img, name: "dropped") }
+            DispatchQueue.main.async { state.addPhoto(image: img, name: "dropped") }
         }
-        return true
     }
 
     private func openImage() {
