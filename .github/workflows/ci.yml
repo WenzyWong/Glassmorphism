@@ -17,13 +17,13 @@ jobs:
         run: swift --version
 
       - name: Build (debug)
-        run: swift build
+        run: ./Tools/ci-run.sh "swift build" swift build
 
       - name: Run tests
-        run: ./Tools/run-tests.sh
+        run: ./Tools/ci-run.sh "tests" ./Tools/run-tests.sh
 
       - name: Build app bundle
-        run: ./build.sh
+        run: ./Tools/ci-run.sh "build.sh" ./build.sh
 
       - name: Verify bundle
         run: |

@@ -100,6 +100,7 @@ struct Strings {
     let rotation: String, photoSize: String, photoOpacity: String
     let rotateLeft: String, rotateRight: String, resetRotation: String
     let dropAddsPhoto: String
+    let layers: String, newPanelShort: String, toTop: String, toBottom: String
     let detectedCorners: (String) -> String
 
     // 選單
@@ -146,6 +147,7 @@ extension Strings {
         rotation: "旋轉", photoSize: "大小", photoOpacity: "不透明度",
         rotateLeft: "左轉 90°", rotateRight: "右轉 90°", resetRotation: "轉正",
         dropAddsPhoto: "再拖圖片進來會成為拼貼層（換底圖請用 ⌘O）",
+        layers: "圖層", newPanelShort: "面板", toTop: "移到最上層", toBottom: "移到最下層",
         detectedCorners: { "偵測到圖片本身有 \($0) px 圓角，已套用為面板預設" },
         menuPanel: "面板", newPanel: "新增面板", duplicatePanel: "複製面板", deletePanel: "刪除面板",
         bringForward: "上移一層", sendBackward: "下移一層",
@@ -189,6 +191,7 @@ extension Strings {
         rotation: "旋转", photoSize: "大小", photoOpacity: "不透明度",
         rotateLeft: "左转 90°", rotateRight: "右转 90°", resetRotation: "转正",
         dropAddsPhoto: "再拖图片进来会成为拼贴层（换底图请用 ⌘O）",
+        layers: "图层", newPanelShort: "面板", toTop: "移到最上层", toBottom: "移到最下层",
         detectedCorners: { "检测到图片本身有 \($0) px 圆角，已应用为面板默认值" },
         menuPanel: "面板", newPanel: "新建面板", duplicatePanel: "复制面板", deletePanel: "删除面板",
         bringForward: "上移一层", sendBackward: "下移一层",
@@ -232,6 +235,7 @@ extension Strings {
         rotation: "Rotation", photoSize: "Size", photoOpacity: "Opacity",
         rotateLeft: "Rotate left 90°", rotateRight: "Rotate right 90°", resetRotation: "Straighten",
         dropAddsPhoto: "Dropping another image adds a collage layer (⌘O replaces the base)",
+        layers: "Layers", newPanelShort: "Panel", toTop: "Bring to front", toBottom: "Send to back",
         detectedCorners: { "Image has \($0) px rounded corners — applied as the panel default" },
         menuPanel: "Panel", newPanel: "New Panel", duplicatePanel: "Duplicate Panel", deletePanel: "Delete Panel",
         bringForward: "Bring Forward", sendBackward: "Send Backward",

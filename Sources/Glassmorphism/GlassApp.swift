@@ -53,6 +53,10 @@ struct GlassApp: App {
                     .keyboardShortcut("]", modifiers: .command)
                 Button(state.s.sendBackward) { state.moveSelected(up: false) }
                     .keyboardShortcut("[", modifiers: .command)
+                Button(state.s.toTop) { state.sendSelected(toTop: true) }
+                    .keyboardShortcut("]", modifiers: [.command, .shift])
+                Button(state.s.toBottom) { state.sendSelected(toTop: false) }
+                    .keyboardShortcut("[", modifiers: [.command, .shift])
             }
             CommandMenu(state.s.menuLanguage) {
                 Picker(state.s.menuLanguage, selection: $state.language) {

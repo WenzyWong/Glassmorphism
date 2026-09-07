@@ -119,11 +119,31 @@ struct GlassPanel: Identifiable, Equatable {
     var text: TextStyle
 }
 
+// MARK: - 圖層順序
+
+enum LayerKind: Equatable {
+    case photo, panel
+}
+
+/// 指向某一個圖層。疊放順序由 AppState 的 layerOrder 單獨保管，
+/// panels / photos 兩個陣列本身的順序不代表任何意義。
+struct LayerRef: Identifiable, Equatable {
+    let id: UUID
+    let kind: LayerKind
+}
+
+/// 渲染時的一個項目。陣列順序即繪製順序：後面的疊在前面的之上。
+enum RenderItem: Equatable {
+    case photo(PhotoLayer)
+    case panel(GlassPanel)
+
+    var isPhoto: Bool { if case .photo = self { return true }; return false }
+    var isPanel: Bool { if case .panel = self { return true }; return false }
+}
+
 struct RenderSpec: Equatable {
-    /// 拼貼進來的圖片。畫在底圖之上、毛玻璃之下。
-    var photos: [PhotoLayer] = []
-    /// 陣列順序即繪製順序：後面的疊在前面的之上
-    var panels: [GlassPanel]
+    /// 由下而上的完整圖層堆疊
+    var items: [RenderItem] = []
     /// 底圖的原始像素尺寸，圖片層算旋轉外框時需要
     var baseSize: CGSize = .zero
 }
@@ -143,6 +163,13 @@ final class AppState: ObservableObject {
     /// 拼貼進來的圖片。畫在底圖之上、毛玻璃之下 ——
     /// 玻璃要能模糊拼貼上去的圖，反過來把圖疊在玻璃上則沒什麼實際用途。
     @Published var photos: [PhotoLayer] = []
+
+    /// 由下而上的疊放順序，涵蓋面板與圖片兩種。
+    ///
+    /// 這是疊放的唯一依據 —— panels / photos 兩個陣列各自的順序沒有意義，
+    /// 它們只是「哪些物件存在」的容器。分開存是為了讓 Inspector 還能直接
+    /// 綁 $state.panels[i] 這種路徑，不必為了排序把整個模型改成異質陣列。
+    @Published var layerOrder: [LayerRef] = []
 
     /// 目前選中的物件。面板與圖片共用同一個選取，UUID 不會撞號，
     /// 所以直接拿它到兩個陣列裡各找一次就好。
@@ -202,7 +229,24 @@ final class AppState: ObservableObject {
     var hasImage: Bool { original != nil }
 
     var spec: RenderSpec {
-        RenderSpec(photos: photos, panels: panels, baseSize: imageSize)
+        RenderSpec(items: layerOrder.compactMap { ref in
+            switch ref.kind {
+            case .photo: return photos.first { $0.id == ref.id }.map(RenderItem.photo)
+            case .panel: return panels.first { $0.id == ref.id }.map(RenderItem.panel)
+            }
+        }, baseSize: imageSize)
+    }
+
+    /// 由上而下（給清單顯示用）
+    var layersTopFirst: [LayerRef] { layerOrder.reversed() }
+
+    func photo(_ id: UUID) -> PhotoLayer? { photos.first { $0.id == id } }
+    func panel(_ id: UUID) -> GlassPanel? { panels.first { $0.id == id } }
+
+    /// 選中的物件在疊放順序裡的位置
+    private var selectedOrderIndex: Int? {
+        guard let selection else { return nil }
+        return layerOrder.firstIndex { $0.id == selection }
     }
 
     /// 選中的面板在 panels 裡的索引
@@ -250,6 +294,7 @@ final class AppState: ObservableObject {
 
         panels = []
         photos = []
+        layerOrder = []
         selection = nil
         addPanel()                      // 新圖預設就帶一塊面板
         statusMessage = detectedCornerRadius > 0
@@ -271,49 +316,75 @@ final class AppState: ObservableObject {
         guard hasImage else { return nil }
         let p = newPanel()
         panels.append(p)
+        layerOrder.append(LayerRef(id: p.id, kind: .panel))
         selection = p.id
         return p.id
     }
 
     func duplicateSelected() {
+        guard let orderIndex = selectedOrderIndex else { return }
+        let ref: LayerRef
         if let i = selectedIndex {
             var copy = panels[i]
             copy.id = UUID()
             // 稍微錯開，免得完全疊住看不出來
             copy.rect = offset(copy.rect, by: 0.03)
-            panels.insert(copy, at: i + 1)
-            selection = copy.id
+            panels.append(copy)
+            ref = LayerRef(id: copy.id, kind: .panel)
         } else if let i = selectedPhotoIndex {
             var copy = photos[i]
             copy.id = UUID()
             copy.center = CGPoint(x: min(copy.center.x + 0.03, 1),
                                   y: min(copy.center.y + 0.03, 1))
-            photos.insert(copy, at: i + 1)
-            selection = copy.id
+            photos.append(copy)
+            ref = LayerRef(id: copy.id, kind: .photo)
+        } else {
+            return
         }
+        layerOrder.insert(ref, at: orderIndex + 1)   // 複本疊在原件正上方
+        selection = ref.id
     }
 
     func deleteSelected() {
-        if let i = selectedIndex {
-            panels.remove(at: i)
-            selection = panels.isEmpty ? nil : panels[min(i, panels.count - 1)].id
-        } else if let i = selectedPhotoIndex {
-            photos.remove(at: i)
-            selection = photos.isEmpty ? nil : photos[min(i, photos.count - 1)].id
+        guard let orderIndex = selectedOrderIndex else { return }
+        let ref = layerOrder[orderIndex]
+        switch ref.kind {
+        case .panel: panels.removeAll { $0.id == ref.id }
+        case .photo: photos.removeAll { $0.id == ref.id }
+        }
+        layerOrder.remove(at: orderIndex)
+        // 選取交給原位置的鄰居，刪一整串時比較順手
+        if layerOrder.isEmpty {
+            selection = nil
+        } else {
+            selection = layerOrder[min(orderIndex, layerOrder.count - 1)].id
         }
     }
 
-    /// 把選中的物件往上/下移一層（影響互相遮蓋的順序）
+    /// 把選中的物件往上/下移一層。順序是跨種類的 ——
+    /// 圖片可以疊到毛玻璃之上，反之亦然。
     func moveSelected(up: Bool) {
-        if let i = selectedIndex {
-            let j = up ? i + 1 : i - 1
-            guard panels.indices.contains(j) else { return }
-            panels.swapAt(i, j)
-        } else if let i = selectedPhotoIndex {
-            let j = up ? i + 1 : i - 1
-            guard photos.indices.contains(j) else { return }
-            photos.swapAt(i, j)
-        }
+        guard let i = selectedOrderIndex else { return }
+        let j = up ? i + 1 : i - 1
+        guard layerOrder.indices.contains(j) else { return }
+        layerOrder.swapAt(i, j)
+    }
+
+    /// 直接送到最上層 / 最下層
+    func sendSelected(toTop: Bool) {
+        guard let i = selectedOrderIndex else { return }
+        let ref = layerOrder.remove(at: i)
+        layerOrder.insert(ref, at: toTop ? layerOrder.count : 0)
+    }
+
+    var canMoveUp: Bool {
+        guard let i = selectedOrderIndex else { return false }
+        return i < layerOrder.count - 1
+    }
+
+    var canMoveDown: Bool {
+        guard let i = selectedOrderIndex else { return false }
+        return i > 0
     }
 
     // MARK: 圖片層
@@ -337,6 +408,7 @@ final class AppState: ObservableObject {
         let layer = PhotoLayer.make(image: image, preview: preview, name: name,
                                     baseSize: imageSize, index: photos.count)
         photos.append(layer)
+        layerOrder.append(LayerRef(id: layer.id, kind: .photo))
         selection = layer.id
         statusMessage = s.photoAdded(name)
     }

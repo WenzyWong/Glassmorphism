@@ -86,29 +86,19 @@ struct CanvasView: View {
 
     @ViewBuilder
     private func overlay(fitted: CGRect) -> some View {
-        // 圖片層畫在面板底下，跟渲染順序一致
-        ForEach(state.photos) { photo in
-            photoFrame(photo, fitted: fitted)
-        }
-
-        // 依陣列順序疊放，後面的在上層（點擊時也會先命中上層，與渲染順序一致）
-        ForEach(state.panels) { panel in
-            let r = viewRect(panel.rect, in: fitted)
-            let selected = panel.id == state.selection
-
-            ZStack {
-                Rectangle().fill(Color.white.opacity(0.001))   // 可命中但看不見
-                if selected {
-                    Rectangle().strokeBorder(Color.accentColor.opacity(0.9), lineWidth: 1)
-                } else {
-                    Rectangle().strokeBorder(Color.white.opacity(0.55),
-                                             style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+        // 依 layerOrder 疊放，後面的在上層。這裡的順序必須和渲染器完全一致，
+        // 否則點擊命中的會是看起來被蓋住的那一個。
+        ForEach(state.layerOrder) { ref in
+            switch ref.kind {
+            case .photo:
+                if let photo = state.photo(ref.id) {
+                    photoFrame(photo, fitted: fitted)
+                }
+            case .panel:
+                if let panel = state.panel(ref.id) {
+                    panelFrame(panel, fitted: fitted)
                 }
             }
-            .frame(width: max(r.width, 1), height: max(r.height, 1))
-            .position(x: r.midX, y: r.midY)
-            .onHover { inside in (inside ? NSCursor.openHand : NSCursor.arrow).set() }
-            .gesture(moveGesture(id: panel.id, fitted: fitted))
         }
 
         // 控制點畫在最後，確保永遠在所有面板之上
@@ -146,6 +136,26 @@ struct CanvasView: View {
     }
 
     private static let guideColor = Color(red: 1.0, green: 0.19, blue: 0.55)
+
+    @ViewBuilder
+    private func panelFrame(_ panel: GlassPanel, fitted: CGRect) -> some View {
+        let r = viewRect(panel.rect, in: fitted)
+        let selected = panel.id == state.selection
+
+        ZStack {
+            Rectangle().fill(Color.white.opacity(0.001))   // 可命中但看不見
+            if selected {
+                Rectangle().strokeBorder(Color.accentColor.opacity(0.9), lineWidth: 1)
+            } else {
+                Rectangle().strokeBorder(Color.white.opacity(0.55),
+                                         style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+            }
+        }
+        .frame(width: max(r.width, 1), height: max(r.height, 1))
+        .position(x: r.midX, y: r.midY)
+        .onHover { inside in (inside ? NSCursor.openHand : NSCursor.arrow).set() }
+        .gesture(moveGesture(id: panel.id, fitted: fitted))
+    }
 
     private func moveGesture(id: UUID, fitted: CGRect) -> some Gesture {
         // minimumDistance 0：按下當下就選中，不用先拖動

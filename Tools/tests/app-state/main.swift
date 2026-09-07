@@ -41,6 +41,9 @@ MainActor.assumeIsolated {
     // 複製／刪除要作用在選中的那一種物件上
     state.duplicateSelected()
     flag("複製圖片層", state.photos.count == 3 && state.panels.count == 1)
+    flag("複本插在原件正上方",
+         state.layerOrder.firstIndex { $0.id == state.selection! }
+         == (state.layerOrder.firstIndex { $0.id == state.photos[1].id } ?? -9) + 1)
     state.deleteSelected()
     flag("刪除圖片層，面板不受影響", state.photos.count == 2 && state.panels.count == 1)
 
@@ -50,18 +53,42 @@ MainActor.assumeIsolated {
     state.deleteSelected()
     flag("選中面板時刪除的是面板", state.panels.count == 1 && state.photos.count == 2)
 
-    // 疊放層級
-    let firstID = state.photos[0].id
-    state.selection = firstID
+    // 疊放層級：面板與圖片共用一份順序，可以跨種類調
+    flag("順序涵蓋所有物件", state.layerOrder.count == state.panels.count + state.photos.count)
+    let panelID = state.panels[0].id
+    let photoIDs = state.photos.map(\.id)
+    // 載入底圖時先有面板，之後加的圖片都疊在它上面
+    flag("面板在最底層", state.layerOrder.first?.id == panelID)
+
+    state.selection = panelID
     state.moveSelected(up: true)
-    flag("圖片層可以上移", state.photos[1].id == firstID)
-    state.moveSelected(up: false)
-    flag("圖片層可以下移", state.photos[0].id == firstID)
+    flag("面板可以往上穿過圖片", state.layerOrder[1].id == panelID
+         && state.layerOrder[0].id == photoIDs[0])
+    state.sendSelected(toTop: true)
+    flag("面板可以直接送到最上層", state.layerOrder.last?.id == panelID)
+    flag("此時面板疊在所有圖片之上",
+         state.spec.items.last.map { if case .panel = $0 { return true } else { return false } } == true)
+
+    state.selection = photoIDs[1]
+    state.sendSelected(toTop: true)
+    flag("圖片也可以疊到面板之上", state.layerOrder.last?.id == photoIDs[1])
+    flag("渲染堆疊最上層是圖片",
+         state.spec.items.last.map { if case .photo = $0 { return true } else { return false } } == true)
+
+    state.selection = photoIDs[1]
+    state.sendSelected(toTop: false)
+    flag("送到最下層", state.layerOrder.first?.id == photoIDs[1])
+
+    state.selection = state.layerOrder.first?.id
+    flag("最下層不能再往下", !state.canMoveDown)
+    state.selection = state.layerOrder.last?.id
+    flag("最上層不能再往上", !state.canMoveUp)
 
     // 換底圖要清掉拼貼層
     state.load(image: image(800, 600), name: "new.png")
     flag("換底圖後拼貼層清空", state.photos.isEmpty)
     flag("換底圖後回到一塊面板", state.panels.count == 1)
+    flag("換底圖後順序也重置", state.layerOrder.count == 1)
 
     // spec 要把兩種物件都帶上
     flag("spec 帶上底圖尺寸", state.spec.baseSize == CGSize(width: 800, height: 600))

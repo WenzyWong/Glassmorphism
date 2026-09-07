@@ -8,9 +8,7 @@ struct InspectorView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelListView(state: state)
-            Divider()
-            PhotoListView(state: state)
+            LayerListView(state: state)
             Divider()
 
             if let index = state.selectedIndex {
@@ -238,92 +236,23 @@ private struct FontPicker: View, Equatable {
     }
 }
 
-// MARK: - 面板清單
+// MARK: - 圖層清單
 
-private struct PanelListView: View {
+/// 面板與拼貼圖片共用一份清單。疊放順序是跨種類的，
+/// 分成兩份清單就沒辦法表達「圖片疊在玻璃之上」這件事。
+private struct LayerListView: View {
     @ObservedObject var state: AppState
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(state.s.panels).font(.headline)
+                Text(state.s.layers).font(.headline)
                 Spacer()
-                Text("\(state.panels.count)")
+                Text("\(state.layerOrder.count)")
                     .font(.caption).monospacedDigit().foregroundStyle(.secondary)
             }
 
-            ScrollView {
-                VStack(spacing: 2) {
-                    // 由上往下顯示最上層的面板，和畫面上的疊放順序一致
-                    ForEach(Array(state.panels.enumerated().reversed()), id: \.element.id) { index, panel in
-                        row(index: index, panel: panel)
-                    }
-                }
-            }
-            .frame(height: 96)
-
-            HStack(spacing: 6) {
-                Button { state.addPanel() } label: { Label(state.s.add, systemImage: "plus") }
-                    .help(state.s.addHelp)
-                Button { state.duplicateSelected() } label: { Image(systemName: "plus.square.on.square") }
-                    .help(state.s.duplicateHelp)
-                    .disabled(state.selectedIndex == nil)
-                Button { state.deleteSelected() } label: { Image(systemName: "trash") }
-                    .help(state.s.deleteHelp)
-                    .disabled(state.selectedIndex == nil)
-                Spacer()
-                Button { state.moveSelected(up: true) } label: { Image(systemName: "arrow.up") }
-                    .help(state.s.moveUpHelp)
-                    .disabled(state.selectedIndex == nil || state.selectedIndex == state.panels.count - 1)
-                Button { state.moveSelected(up: false) } label: { Image(systemName: "arrow.down") }
-                    .help(state.s.moveDownHelp)
-                    .disabled(state.selectedIndex == nil || state.selectedIndex == 0)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .disabled(!state.hasImage)
-        }
-        .padding(12)
-    }
-
-    private func row(index: Int, panel: GlassPanel) -> some View {
-        let selected = panel.id == state.selection
-        return HStack(spacing: 6) {
-            Image(systemName: "square.on.square.dashed")
-                .foregroundStyle(selected ? Color.white : Color.secondary)
-            Text(state.s.panelNamed(index + 1))
-                .lineLimit(1)
-            if !panel.text.title.isEmpty {
-                Text(panel.text.title)
-                    .lineLimit(1)
-                    .foregroundStyle(selected ? Color.white.opacity(0.8) : Color.secondary)
-            }
-            Spacer()
-        }
-        .font(.callout)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-        .background(selected ? Color.accentColor : Color.clear, in: RoundedRectangle(cornerRadius: 5))
-        .foregroundStyle(selected ? Color.white : Color.primary)
-        .contentShape(Rectangle())
-        .onTapGesture { state.selection = panel.id }
-    }
-}
-
-/// 拼貼圖片的清單
-private struct PhotoListView: View {
-    @ObservedObject var state: AppState
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(state.s.photos).font(.headline)
-                Spacer()
-                Text("\(state.photos.count)")
-                    .font(.caption).monospacedDigit().foregroundStyle(.secondary)
-            }
-
-            if state.photos.isEmpty {
+            if state.layerOrder.isEmpty {
                 Text(state.s.dropAddsPhoto)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -331,28 +260,50 @@ private struct PhotoListView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 2) {
-                        // 由上往下顯示最上層的，和畫面上的疊放順序一致
-                        ForEach(Array(state.photos.enumerated().reversed()), id: \.element.id) { index, photo in
-                            row(index: index, photo: photo)
+                        // 由上而下顯示，跟畫面上的疊放一致
+                        ForEach(state.layersTopFirst) { ref in
+                            row(ref)
                         }
                     }
                 }
-                .frame(height: 72)
+                .frame(height: 132)
             }
 
             HStack(spacing: 6) {
-                Button { addPhoto() } label: { Label(state.s.addPhoto, systemImage: "photo.badge.plus") }
-                    .help(state.s.addPhotoHelp)
-                Button { state.duplicateSelected() } label: { Image(systemName: "plus.square.on.square") }
-                    .disabled(state.selectedPhotoIndex == nil)
-                Button { state.deleteSelected() } label: { Image(systemName: "trash") }
-                    .disabled(state.selectedPhotoIndex == nil)
+                Button { state.addPanel() } label: {
+                    Label(state.s.newPanelShort, systemImage: "square.on.square.dashed")
+                }
+                .help(state.s.addHelp)
+                Button { addPhoto() } label: {
+                    Label(state.s.addPhoto, systemImage: "photo.badge.plus")
+                }
+                .help(state.s.addPhotoHelp)
                 Spacer()
+                Button { state.duplicateSelected() } label: { Image(systemName: "plus.square.on.square") }
+                    .help(state.s.duplicateHelp)
+                    .disabled(state.selection == nil)
+                Button { state.deleteSelected() } label: { Image(systemName: "trash") }
+                    .help(state.s.deleteHelp)
+                    .disabled(state.selection == nil)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .disabled(!state.hasImage)
+
+            HStack(spacing: 6) {
+                Button { state.sendSelected(toTop: true) } label: { Image(systemName: "square.3.layers.3d.top.filled") }
+                    .help(state.s.toTop)
+                    .disabled(!state.canMoveUp)
                 Button { state.moveSelected(up: true) } label: { Image(systemName: "arrow.up") }
-                    .disabled(state.selectedPhotoIndex == nil
-                              || state.selectedPhotoIndex == state.photos.count - 1)
+                    .help(state.s.moveUpHelp)
+                    .disabled(!state.canMoveUp)
                 Button { state.moveSelected(up: false) } label: { Image(systemName: "arrow.down") }
-                    .disabled(state.selectedPhotoIndex == nil || state.selectedPhotoIndex == 0)
+                    .help(state.s.moveDownHelp)
+                    .disabled(!state.canMoveDown)
+                Button { state.sendSelected(toTop: false) } label: { Image(systemName: "square.3.layers.3d.bottom.filled") }
+                    .help(state.s.toBottom)
+                    .disabled(!state.canMoveDown)
+                Spacer()
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
@@ -361,12 +312,13 @@ private struct PhotoListView: View {
         .padding(12)
     }
 
-    private func row(index: Int, photo: PhotoLayer) -> some View {
-        let selected = photo.id == state.selection
-        return HStack(spacing: 6) {
-            Image(systemName: "photo")
+    @ViewBuilder
+    private func row(_ ref: LayerRef) -> some View {
+        let selected = ref.id == state.selection
+        HStack(spacing: 6) {
+            Image(systemName: ref.kind == .photo ? "photo" : "square.on.square.dashed")
                 .foregroundStyle(selected ? Color.white : Color.secondary)
-            Text(photo.name).lineLimit(1).truncationMode(.middle)
+            Text(label(ref)).lineLimit(1).truncationMode(.middle)
             Spacer()
         }
         .font(.callout)
@@ -375,7 +327,21 @@ private struct PhotoListView: View {
         .background(selected ? Color.accentColor : Color.clear, in: RoundedRectangle(cornerRadius: 5))
         .foregroundStyle(selected ? Color.white : Color.primary)
         .contentShape(Rectangle())
-        .onTapGesture { state.selection = photo.id }
+        .onTapGesture { state.selection = ref.id }
+    }
+
+    private func label(_ ref: LayerRef) -> String {
+        switch ref.kind {
+        case .photo:
+            return state.photo(ref.id)?.name ?? ""
+        case .panel:
+            // 用面板在堆疊裡的位置編號，跟清單看到的順序一致
+            let number = (state.layerOrder.filter { $0.kind == .panel }
+                .firstIndex { $0.id == ref.id } ?? 0) + 1
+            let title = state.panel(ref.id)?.text.title ?? ""
+            return title.isEmpty ? state.s.panelNamed(number)
+                                 : "\(state.s.panelNamed(number))  \(title)"
+        }
     }
 
     private func addPhoto() {

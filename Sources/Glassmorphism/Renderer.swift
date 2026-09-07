@@ -23,29 +23,52 @@ enum GlassRenderer {
         guard w > 0, h > 0 else { return nil }
         let fullRect = CGRect(x: 0, y: 0, width: w, height: h)
 
-        guard let ctx = CGContext(data: nil,
-                                  width: w, height: h,
-                                  bitsPerComponent: 8, bytesPerRow: 0,
-                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        else { return nil }
+        guard let ctx = makeContext(width: w, height: h) else { return nil }
         ctx.interpolationQuality = .high
         ctx.draw(base, in: fullRect)
 
-        // 拼貼的圖片先畫，依陣列順序疊加
-        for photo in spec.photos {
-            draw(photo: photo, ctx: ctx, fullRect: fullRect, scale: scale)
+        // 毛玻璃模糊的取樣來源是 backdrop：底圖加上「排在這塊玻璃底下」的圖片層，
+        // 不含任何玻璃。
+        //   * 不含玻璃 —— 兩塊面板重疊時才不會重複模糊，外觀也不受疊放順序影響。
+        //   * 只含底下的圖片 —— 疊在玻璃之上的圖片不該被模糊進去，
+        //     否則玻璃上會出現一份它其實蓋不到的殘影。
+        // 所以要另外開一個 context 累積圖片，走到面板時再快照。
+        // 沒有圖片、或沒有面板時都用不到，直接跳過。
+        let needsBackdrop = spec.items.contains(where: \.isPhoto)
+            && spec.items.contains(where: \.isPanel)
+        var backdropCtx: CGContext?
+        if needsBackdrop {
+            backdropCtx = makeContext(width: w, height: h)
+            backdropCtx?.interpolationQuality = .high
+            backdropCtx?.draw(base, in: fullRect)
         }
+        var backdrop = base
+        var backdropStale = false
 
-        // 毛玻璃模糊的取樣來源是「底圖 + 所有圖片層」合成後的畫面，
-        // 而不是原始底圖 —— 否則玻璃壓在拼貼圖上時，透出來的會是被蓋住的原圖。
-        // 沒有圖片層時就直接用 base，省掉一次快照。
-        let backdrop = spec.photos.isEmpty ? base : (ctx.makeImage() ?? base)
-
-        for panel in spec.panels {
-            draw(panel: panel, ctx: ctx, base: backdrop, fullRect: fullRect, scale: scale)
+        for item in spec.items {
+            switch item {
+            case .photo(let photo):
+                draw(photo: photo, ctx: ctx, fullRect: fullRect, scale: scale)
+                if let b = backdropCtx {
+                    draw(photo: photo, ctx: b, fullRect: fullRect, scale: scale)
+                    backdropStale = true
+                }
+            case .panel(let panel):
+                if backdropStale, let snapshot = backdropCtx?.makeImage() {
+                    backdrop = snapshot
+                    backdropStale = false
+                }
+                draw(panel: panel, ctx: ctx, base: backdrop, fullRect: fullRect, scale: scale)
+            }
         }
         return ctx.makeImage()
+    }
+
+    private static func makeContext(width: Int, height: Int) -> CGContext? {
+        CGContext(data: nil, width: width, height: height,
+                  bitsPerComponent: 8, bytesPerRow: 0,
+                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
     }
 
     // MARK: - 圖片層
