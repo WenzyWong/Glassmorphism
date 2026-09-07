@@ -87,11 +87,11 @@ enum GlassRenderer {
         ctx.translateBy(x: cx, y: cy)
         // rotation 是「畫面上看到的順時針角度」，CGContext 的 y 軸向上，
         // 正角度是逆時針，所以要取負號。
-        ctx.rotate(by: -photo.rotation * .pi / 180)
+        ctx.rotate(by: CGFloat(-photo.rotation * .pi / 180))
 
-        if photo.opacity < 1 { ctx.setAlpha(photo.opacity) }
+        if photo.opacity < 1 { ctx.setAlpha(CGFloat(photo.opacity)) }
         if photo.shadowEnabled, photo.shadowOpacity > 0.001, photo.shadowRadius > 0.1 {
-            let blur = photo.shadowRadius * scale
+            let blur = CGFloat(photo.shadowRadius) * scale
             ctx.setShadow(offset: CGSize(width: 0, height: -blur * 0.25), blur: blur,
                           color: NSColor.black.withAlphaComponent(photo.shadowOpacity).cgColor)
         }

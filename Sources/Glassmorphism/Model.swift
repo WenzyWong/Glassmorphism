@@ -415,11 +415,14 @@ final class AppState: ObservableObject {
 
     /// 新面板擺在內容範圍裡，而不是整張圖裡 —— 視窗截圖的話才不會壓在透明邊上
     private func cascadeRect() -> CGRect {
-        let c = contentRect
-        let w = c.width * 0.5, h = c.height * 0.28
+        // 全程用 Double；CGFloat 與 Double 混著算會讓運算子的重載解析
+        // 隨編譯器版本而不同（見 PhotoLayer 的幾何區註解）
+        let minX = Double(contentRect.minX), minY = Double(contentRect.minY)
+        let width = Double(contentRect.width), height = Double(contentRect.height)
+        let w = width * 0.5, h = height * 0.28
         let step = 0.045 * Double(panels.count)
-        return CGRect(x: min(c.minX + c.width * 0.10 + step * c.width, c.maxX - w),
-                      y: min(c.minY + c.height * 0.14 + step * c.height, c.maxY - h),
+        return CGRect(x: min(minX + width * (0.10 + step), minX + width - w),
+                      y: min(minY + height * (0.14 + step), minY + height - h),
                       width: w, height: h)
     }
 

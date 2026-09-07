@@ -389,7 +389,7 @@ extension CanvasView {
 
     /// 把一點繞著另一點旋轉
     static func rotate(_ point: CGPoint, around center: CGPoint, degrees: Double) -> CGPoint {
-        let a = degrees * .pi / 180
+        let a = CGFloat(degrees * .pi / 180)
         let dx = point.x - center.x, dy = point.y - center.y
         return CGPoint(x: center.x + dx * cos(a) - dy * sin(a),
                        y: center.y + dx * sin(a) + dy * cos(a))
@@ -407,6 +407,7 @@ extension CanvasView {
 
                 var center = CGPoint(x: start.x + value.translation.width / fitted.width,
                                      y: start.y + value.translation.height / fitted.height)
+                // 以下與 hit.offset（Double）相加時一律顯式轉 CGFloat
 
                 if snappingOn {
                     // 用旋轉後的外接矩形去吸，跟畫面上看到的範圍一致
@@ -420,13 +421,13 @@ extension CanvasView {
 
                     if let hit = Snapping.snapSpan(min: box.minX, max: box.maxX,
                                                    to: targets.x, threshold: tx) {
-                        center.x += hit.offset
+                        center.x += CGFloat(hit.offset)
                         guideX = hit.guide
                     } else { guideX = nil }
 
                     if let hit = Snapping.snapSpan(min: box.minY, max: box.maxY,
                                                    to: targets.y, threshold: ty) {
-                        center.y += hit.offset
+                        center.y += CGFloat(hit.offset)
                         guideY = hit.guide
                     } else { guideY = nil }
                 } else {
@@ -450,7 +451,7 @@ extension CanvasView {
                 let center = CGPoint(x: r.midX, y: r.midY)
 
                 func distance(_ p: CGPoint) -> Double {
-                    let dx = p.x - center.x, dy = p.y - center.y
+                    let dx = Double(p.x - center.x), dy = Double(p.y - center.y)
                     return (dx * dx + dy * dy).squareRoot()
                 }
                 let startDistance = dragDistance ?? max(distance(value.startLocation), 1)
@@ -477,8 +478,8 @@ extension CanvasView {
                 let center = CGPoint(x: r.midX, y: r.midY)
 
                 // 把手在正上方時角度為 0，所以基準要轉 90°
-                let dx = value.location.x - center.x
-                let dy = value.location.y - center.y
+                let dx = Double(value.location.x - center.x)
+                let dy = Double(value.location.y - center.y)
                 var degrees = atan2(dy, dx) * 180 / .pi + 90
                 if degrees > 180 { degrees -= 360 }
                 if degrees < -180 { degrees += 360 }
