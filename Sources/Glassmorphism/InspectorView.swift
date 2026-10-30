@@ -32,28 +32,33 @@ struct InspectorView: View {
     private func parameters(index i: Int) -> some View {
         let panel = $state.panels[i]
 
+        // 文字層沒有玻璃，只留文字與資訊兩區
+        let textOnly = state.panels[i].textOnly
+
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                section(state.s.sectionGlass) {
-                    slider(state.s.blurRadius, panel.style.blurRadius, ParamRange.blur(unit), unit: "px")
-                    ColorPicker(state.s.tint, selection: panel.style.tintColor, supportsOpacity: false)
-                    slider(state.s.tintOpacity, panel.style.tintOpacity, ParamRange.ratio, percent: true)
-                    slider(state.s.cornerRadius, panel.style.cornerRadius, ParamRange.corner(unit), unit: "px")
-                    slider(state.s.noise, panel.style.noiseAmount, ParamRange.noise, percent: true)
-                }
+                if !textOnly {
+                    section(state.s.sectionGlass) {
+                        slider(state.s.blurRadius, panel.style.blurRadius, ParamRange.blur(unit), unit: "px")
+                        ColorPicker(state.s.tint, selection: panel.style.tintColor, supportsOpacity: false)
+                        slider(state.s.tintOpacity, panel.style.tintOpacity, ParamRange.ratio, percent: true)
+                        slider(state.s.cornerRadius, panel.style.cornerRadius, ParamRange.corner(unit), unit: "px")
+                        slider(state.s.noise, panel.style.noiseAmount, ParamRange.noise, percent: true)
+                    }
 
-                section(state.s.sectionBorder) {
-                    slider(state.s.width, panel.style.borderWidth, ParamRange.borderWidth(unit), unit: "px")
-                    ColorPicker(state.s.color, selection: panel.style.borderColor, supportsOpacity: false)
-                    slider(state.s.opacity, panel.style.borderOpacity, ParamRange.ratio, percent: true)
-                }
+                    section(state.s.sectionBorder) {
+                        slider(state.s.width, panel.style.borderWidth, ParamRange.borderWidth(unit), unit: "px")
+                        ColorPicker(state.s.color, selection: panel.style.borderColor, supportsOpacity: false)
+                        slider(state.s.opacity, panel.style.borderOpacity, ParamRange.ratio, percent: true)
+                    }
 
-                section(state.s.sectionShadow) {
-                    Toggle(state.s.shadowEnabled, isOn: panel.style.shadowEnabled)
-                    slider(state.s.spread, panel.style.shadowRadius, ParamRange.shadowRadius(unit), unit: "px")
-                        .disabled(!state.panels[i].style.shadowEnabled)
-                    slider(state.s.strength, panel.style.shadowOpacity, ParamRange.ratio, percent: true)
-                        .disabled(!state.panels[i].style.shadowEnabled)
+                    section(state.s.sectionShadow) {
+                        Toggle(state.s.shadowEnabled, isOn: panel.style.shadowEnabled)
+                        slider(state.s.spread, panel.style.shadowRadius, ParamRange.shadowRadius(unit), unit: "px")
+                            .disabled(!state.panels[i].style.shadowEnabled)
+                        slider(state.s.strength, panel.style.shadowOpacity, ParamRange.ratio, percent: true)
+                            .disabled(!state.panels[i].style.shadowEnabled)
+                    }
                 }
 
                 section(state.s.sectionText) {
@@ -108,6 +113,7 @@ struct InspectorView: View {
                         let old = state.panels[i].text
                         var t = TextStyle.defaults(for: state.imageSize)
                         t.title = old.title; t.subtitle = old.subtitle   // 保留已輸入的文字
+                        if textOnly { t.padding = 0 }
                         state.panels[i].text = t
                     }
                 }
@@ -267,6 +273,7 @@ private struct LayerListView: View {
                     }
                 }
                 .frame(height: 132)
+                .contextMenu { LayerContextMenu(state: state) }
             }
 
             HStack(spacing: 6) {
@@ -274,6 +281,10 @@ private struct LayerListView: View {
                     Label(state.s.newPanelShort, systemImage: "square.on.square.dashed")
                 }
                 .help(state.s.addHelp)
+                Button { state.addText() } label: {
+                    Label(state.s.newTextShort, systemImage: "textformat")
+                }
+                .help(state.s.addTextHelp)
                 Button { addPhoto() } label: {
                     Label(state.s.addPhoto, systemImage: "photo.badge.plus")
                 }
@@ -316,7 +327,7 @@ private struct LayerListView: View {
     private func row(_ ref: LayerRef) -> some View {
         let selected = ref.id == state.selection
         HStack(spacing: 6) {
-            Image(systemName: ref.kind == .photo ? "photo" : "square.on.square.dashed")
+            Image(systemName: icon(ref))
                 .foregroundStyle(selected ? Color.white : Color.secondary)
             Text(label(ref)).lineLimit(1).truncationMode(.middle)
             Spacer()
@@ -335,12 +346,20 @@ private struct LayerListView: View {
         case .photo:
             return state.photo(ref.id)?.name ?? ""
         case .panel:
-            // 用面板在堆疊裡的位置編號，跟清單看到的順序一致
-            let number = (state.layerOrder.filter { $0.kind == .panel }
+            // 用在堆疊裡的位置編號，跟清單看到的順序一致。面板與文字層各自編號。
+            let textOnly = state.panel(ref.id)?.textOnly ?? false
+            let number = (state.layerOrder.filter { $0.kind == .panel && state.panel($0.id)?.textOnly == textOnly }
                 .firstIndex { $0.id == ref.id } ?? 0) + 1
+            let name = textOnly ? state.s.textNamed(number) : state.s.panelNamed(number)
             let title = state.panel(ref.id)?.text.title ?? ""
-            return title.isEmpty ? state.s.panelNamed(number)
-                                 : "\(state.s.panelNamed(number))  \(title)"
+            return title.isEmpty ? name : "\(name)  \(title)"
+        }
+    }
+
+    private func icon(_ ref: LayerRef) -> String {
+        switch ref.kind {
+        case .photo: return "photo"
+        case .panel: return state.panel(ref.id)?.textOnly == true ? "textformat" : "square.on.square.dashed"
         }
     }
 

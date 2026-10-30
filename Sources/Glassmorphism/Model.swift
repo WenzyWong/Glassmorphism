@@ -37,14 +37,14 @@ private func clamp(_ v: Double, _ r: ClosedRange<Double>) -> Double {
 
 struct GlassStyle: Equatable {
     // 這裡的字面值就是新面板的預設外觀
-    var blurRadius: Double = 30
+    var blurRadius: Double = 15
     var tintColor: Color = .white
     var tintOpacity: Double = 0.10
     var cornerRadius: Double = 0
     var borderWidth: Double = 3
     var borderColor: Color = .white
     var borderOpacity: Double = 0.50
-    var noiseAmount: Double = 0
+    var noiseAmount: Double = 0.15
     var shadowEnabled: Bool = true
     var shadowRadius: Double = 69
     var shadowOpacity: Double = 0.30
@@ -90,6 +90,7 @@ struct TextStyle: Equatable {
     /// 空字串代表使用系統字體
     var fontFamily: String = ""
     var titleBold: Bool = true
+    // 以下四個像素值是「寬度 = referenceWidth 的圖」上的預設，其他寬度按比例縮放
     var titleSize: Double = 48
     var subtitleSize: Double = 20
     var color: Color = .white
@@ -97,14 +98,20 @@ struct TextStyle: Equatable {
     var lineGap: Double = 8            // 標題與副標之間的間距
     var padding: Double = 32           // 文字距面板邊緣的內縮
 
-    /// 文字尺寸維持隨圖片大小自適應
+    /// Mac 全螢幕截圖的寬度（4K 外接螢幕，2048×1152 HiDPI → 4096 px）。
+    /// 字面值的字級在這個寬度上剛好，其他圖依寬度等比換算。
+    static let referenceWidth: Double = 4096
+
+    /// 文字尺寸依圖片寬度自適應：字面值 × 圖寬 / referenceWidth
     static func defaults(for size: CGSize) -> TextStyle {
-        let u = ParamRange.unit(size)
         var t = TextStyle()
-        t.titleSize = (u * 0.075).rounded()
-        t.subtitleSize = (u * 0.032).rounded()
-        t.lineGap = (u * 0.015).rounded()
-        t.padding = (u * 0.04).rounded()
+        let k = size.width > 0 ? Double(size.width) / referenceWidth : 1
+        let u = ParamRange.unit(size)
+        // 極端長寬比（細長條）時，按寬度換算可能超過以短邊定的滑桿上限
+        t.titleSize = clamp((t.titleSize * k).rounded(), ParamRange.titleSize(u))
+        t.subtitleSize = clamp((t.subtitleSize * k).rounded(), ParamRange.subtitleSize(u))
+        t.lineGap = clamp((t.lineGap * k).rounded(), ParamRange.lineGap(u))
+        t.padding = clamp((t.padding * k).rounded(), ParamRange.padding(u))
         return t
     }
 }
@@ -112,11 +119,15 @@ struct TextStyle: Equatable {
 // MARK: - 面板
 
 /// 一塊毛玻璃。每塊各自持有完整的樣式與文字，互不影響。
+///
+/// textOnly 的面板就是「文字層」：只畫文字，不畫玻璃、邊框與陰影。
+/// 移動、縮放、磁吸、疊放都跟面板完全相同，所以不另立一種圖層。
 struct GlassPanel: Identifiable, Equatable {
     var id = UUID()
     var rect: CGRect            // 歸一化，原點左上
     var style: GlassStyle
     var text: TextStyle
+    var textOnly = false
 }
 
 // MARK: - 圖層順序
@@ -138,7 +149,8 @@ enum RenderItem: Equatable {
     case panel(GlassPanel)
 
     var isPhoto: Bool { if case .photo = self { return true }; return false }
-    var isPanel: Bool { if case .panel = self { return true }; return false }
+    /// 真的有玻璃要模糊的面板（文字層不算）
+    var isGlass: Bool { if case .panel(let p) = self { return !p.textOnly }; return false }
 }
 
 struct RenderSpec: Equatable {
@@ -319,6 +331,43 @@ final class AppState: ObservableObject {
         layerOrder.append(LayerRef(id: p.id, kind: .panel))
         selection = p.id
         return p.id
+    }
+
+    /// 不帶玻璃、直接放文字的圖層
+    @discardableResult
+    func addText() -> UUID? {
+        guard hasImage else { return nil }
+        var p = newPanel()
+        p.textOnly = true
+        p.text.title = s.textPlaceholder       // 空白的文字層看不見，先給一段字
+        p.text.padding = 0                     // 沒有玻璃，內縮沒有意義
+        panels.append(p)
+        layerOrder.append(LayerRef(id: p.id, kind: .panel))
+        selection = p.id
+        return p.id
+    }
+
+    /// 刪掉所有面板、文字與拼貼圖片，底圖保留
+    func removeAllLayers() {
+        panels = []
+        photos = []
+        layerOrder = []
+        selection = nil
+        statusMessage = nil
+        refreshPreview()                // 只有拼貼圖片時 panels 沒變，onChange 不會補送
+    }
+
+    /// 連底圖一起清掉，回到空白畫布 —— 下一張拖進來的圖就會成為新底圖
+    func clearCanvas() {
+        removeAllLayers()
+        original = nil
+        previewBase = nil
+        preview = nil
+        sourceName = ""
+        detectedCornerRadius = 0
+        contentRect = CGRect(x: 0, y: 0, width: 1, height: 1)
+        GlassRenderer.invalidateCache()
+        lastRenderedSpec = nil
     }
 
     func duplicateSelected() {

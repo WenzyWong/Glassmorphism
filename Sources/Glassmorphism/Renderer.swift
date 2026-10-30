@@ -35,7 +35,7 @@ enum GlassRenderer {
         // 所以要另外開一個 context 累積圖片，走到面板時再快照。
         // 沒有圖片、或沒有面板時都用不到，直接跳過。
         let needsBackdrop = spec.items.contains(where: \.isPhoto)
-            && spec.items.contains(where: \.isPanel)
+            && spec.items.contains(where: \.isGlass)
         var backdropCtx: CGContext?
         if needsBackdrop {
             backdropCtx = makeContext(width: w, height: h)
@@ -111,6 +111,11 @@ enum GlassRenderer {
                           width: p.width * fullRect.width,
                           height: p.height * fullRect.height).integral
         guard rect.width >= 2, rect.height >= 2 else { return }
+
+        if panel.textOnly {
+            drawText(ctx: ctx, rect: rect, text: panel.text, scale: scale)
+            return
+        }
 
         let style = panel.style
         let corner = min(style.cornerRadius * scale, min(rect.width, rect.height) / 2)

@@ -39,6 +39,9 @@ struct GlassApp: App {
                     .disabled(!state.hasImage)
             }
             CommandGroup(after: .newItem) {
+                Button(state.s.addText) { state.addText() }
+                    .keyboardShortcut("t", modifiers: .command)
+                    .disabled(!state.hasImage)
                 Button(state.s.addPhoto) { addPhoto() }
                     .keyboardShortcut("o", modifiers: [.command, .shift])
                     .disabled(!state.hasImage)
@@ -57,6 +60,12 @@ struct GlassApp: App {
                     .keyboardShortcut("]", modifiers: [.command, .shift])
                 Button(state.s.toBottom) { state.sendSelected(toTop: false) }
                     .keyboardShortcut("[", modifiers: [.command, .shift])
+                Divider()
+                Button(state.s.removeAllLayers) { state.removeAllLayers() }
+                    .keyboardShortcut(.delete, modifiers: [.command, .shift])
+                    .disabled(state.layerOrder.isEmpty)
+                Button(state.s.clearCanvas) { state.clearCanvas() }
+                    .disabled(!state.hasImage)
             }
             CommandMenu(state.s.menuLanguage) {
                 Picker(state.s.menuLanguage, selection: $state.language) {

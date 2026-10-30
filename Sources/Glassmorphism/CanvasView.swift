@@ -79,6 +79,9 @@ struct CanvasView: View {
             .frame(width: geo.size.width, height: geo.size.height)
             .contentShape(Rectangle())
             .coordinateSpace(name: Self.canvasSpace)
+            .contextMenu {
+                if state.hasImage { LayerContextMenu(state: state) }
+            }
         }
     }
 
@@ -291,6 +294,20 @@ struct CanvasView: View {
                y: fitted.minY + normalized.minY * fitted.height,
                width: normalized.width * fitted.width,
                height: normalized.height * fitted.height)
+    }
+}
+
+/// 畫布與圖層清單共用的右鍵選單。清除項放在這裡，換下一張圖時不必逐一刪。
+struct LayerContextMenu: View {
+    @ObservedObject var state: AppState
+
+    var body: some View {
+        Button(state.s.newPanel) { state.addPanel() }
+        Button(state.s.addText) { state.addText() }
+        Divider()
+        Button(state.s.removeAllLayers) { state.removeAllLayers() }
+            .disabled(state.layerOrder.isEmpty)
+        Button(state.s.clearCanvas) { state.clearCanvas() }
     }
 }
 

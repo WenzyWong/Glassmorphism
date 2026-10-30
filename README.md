@@ -22,6 +22,10 @@ export at the **original resolution**.
 - **Everything is a slider.** Blur radius, tint colour and opacity, corner radius, border,
   noise grain, drop shadow.
 - **Text on the glass.** Title and subtitle, with font, size, colour and alignment.
+  Default sizes follow the image's width.
+- **Text without glass.** A text layer (⌘T) puts words straight on the image, no panel needed.
+- **Start over in one click.** Right-click the canvas or the layer list to delete every
+  panel and layer, or to clear the canvas — base image included — for the next picture.
 - **True WYSIWYG.** The preview and the exported file run through the same renderer, so
   what you see is what you get — just at a different resolution.
 - **Export at full resolution**, or copy straight to the clipboard.
@@ -68,6 +72,9 @@ open dist/Glassmorphism.app
 | Resize a panel | Drag any of the 8 handles |
 | Temporarily disable snapping | Hold ⌥ while dragging |
 | New panel | ⌘N |
+| New text layer | ⌘T |
+| Delete all panels and layers | ⇧⌘⌫, or right-click the canvas |
+| Clear the canvas for the next image | Right-click the canvas → Clear Canvas |
 | Duplicate panel | ⌘D |
 | Delete panel | ⌘⌫ |
 | Change stacking order | ⌘] forward, ⌘[ backward, ⇧⌘] to front, ⇧⌘[ to back |
@@ -93,10 +100,15 @@ Each panel has its own set.
 - **Text** — title, subtitle, font, bold title, title/subtitle size, colour, alignment,
   line gap, padding
 
-Defaults live in the property initialisers of `GlassStyle` (blur 30 px, tint 10%,
-border 3 px at 50%, shadow on at 69 px / 30%). These are absolute pixel values, so on a
-very small image they are clamped back into slider range by `ParamRange`. Text sizes
-scale with the image instead.
+Defaults live in the property initialisers of `GlassStyle` (blur 15 px, tint 10%,
+noise 15%, border 3 px at 50%, shadow on at 69 px / 30%). These are absolute pixel values,
+so on a very small image they are clamped back into slider range by `ParamRange`. Text
+sizes scale with the image's width instead: the literals in `TextStyle` (title 48 px,
+subtitle 20 px) are what a 4096 px-wide full-screen Mac screenshot gets, and other widths
+scale proportionally.
+
+A text layer is a panel with `textOnly` set: it moves, resizes, snaps and stacks exactly
+like a panel, but draws only its text.
 
 The corner radius is the exception: `ImageAnalyzer` measures the image's own corners on
 load and that becomes the default, falling back to 0 (square) when there are none. It

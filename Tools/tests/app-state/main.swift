@@ -92,6 +92,37 @@ MainActor.assumeIsolated {
 
     // spec 要把兩種物件都帶上
     flag("spec 帶上底圖尺寸", state.spec.baseSize == CGSize(width: 800, height: 600))
+
+    // 預設參數：模糊 15、噪點 15%
+    flag("預設模糊 15", state.panels[0].style.blurRadius == 15)
+    flag("預設噪點 15%", state.panels[0].style.noiseAmount == 0.15)
+
+    // 字級依圖寬換算：參考寬度上就是字面值，半寬就減半
+    let full = TextStyle.defaults(for: CGSize(width: TextStyle.referenceWidth, height: 2304))
+    flag("參考寬度上標題 48、副標 20", full.titleSize == 48 && full.subtitleSize == 20)
+    let half = TextStyle.defaults(for: CGSize(width: TextStyle.referenceWidth / 2, height: 1152))
+    flag("半寬時字級減半", half.titleSize == 24 && half.subtitleSize == 10)
+    let strip = TextStyle.defaults(for: CGSize(width: 8000, height: 40))
+    flag("細長條的字級夾在滑桿範圍內", strip.titleSize <= ParamRange.titleSize(40).upperBound)
+
+    // 文字層：不需要先有面板
+    state.removeAllLayers()
+    flag("刪除全部後沒有任何圖層", state.panels.isEmpty && state.photos.isEmpty && state.layerOrder.isEmpty)
+    flag("刪除全部後底圖還在", state.hasImage && state.sourceName == "new.png")
+    let textID = state.addText()
+    flag("可以直接新增文字層", textID != nil && state.panels.count == 1 && state.panels[0].textOnly)
+    flag("文字層帶預設文字", !state.panels[0].text.title.isEmpty)
+    flag("文字層被選中", state.selection == textID)
+    flag("只有文字層時不需要 backdrop", !state.spec.items.contains(where: \.isGlass))
+    state.duplicateSelected()
+    flag("複製文字層仍是文字層", state.panels.count == 2 && state.panels.allSatisfy(\.textOnly))
+
+    // 清空畫布：連底圖一起清，下一張拖進來的圖成為底圖
+    state.addPhoto(image: image(300, 300), name: "c.png")
+    state.clearCanvas()
+    flag("清空畫布後沒有底圖", !state.hasImage && state.layerOrder.isEmpty && state.photos.isEmpty)
+    state.addPhoto(image: image(640, 480), name: "next.png")
+    flag("清空後下一張成為底圖", state.hasImage && state.sourceName == "next.png" && state.photos.isEmpty)
 }
 
 print(failures == 0 ? "\n全部通過" : "\n\(failures) 項失敗")

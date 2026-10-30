@@ -103,6 +103,11 @@ struct Strings {
     let layers: String, newPanelShort: String, toTop: String, toBottom: String
     let detectedCorners: (String) -> String
 
+    // 文字層與清除
+    let addText: String, addTextHelp: String, newTextShort: String
+    let textNamed: (Int) -> String, textPlaceholder: String
+    let removeAllLayers: String, clearCanvas: String
+
     // 選單
     let menuPanel: String, newPanel: String, duplicatePanel: String, deletePanel: String
     let bringForward: String, sendBackward: String
@@ -149,6 +154,9 @@ extension Strings {
         dropAddsPhoto: "再拖圖片進來會成為拼貼層（換底圖請用 ⌘O）",
         layers: "圖層", newPanelShort: "面板", toTop: "移到最上層", toBottom: "移到最下層",
         detectedCorners: { "偵測到圖片本身有 \($0) px 圓角，已套用為面板預設" },
+        addText: "新增文字", addTextHelp: "新增文字層，不帶毛玻璃 (⌘T)", newTextShort: "文字",
+        textNamed: { "文字 \($0)" }, textPlaceholder: "文字",
+        removeAllLayers: "刪除全部面板與圖層", clearCanvas: "清空畫布（連同底圖）",
         menuPanel: "面板", newPanel: "新增面板", duplicatePanel: "複製面板", deletePanel: "刪除面板",
         bringForward: "上移一層", sendBackward: "下移一層",
         menuLanguage: "語言", langSystem: "跟隨系統"
@@ -193,6 +201,9 @@ extension Strings {
         dropAddsPhoto: "再拖图片进来会成为拼贴层（换底图请用 ⌘O）",
         layers: "图层", newPanelShort: "面板", toTop: "移到最上层", toBottom: "移到最下层",
         detectedCorners: { "检测到图片本身有 \($0) px 圆角，已应用为面板默认值" },
+        addText: "新建文字", addTextHelp: "新建文字层，不带毛玻璃 (⌘T)", newTextShort: "文字",
+        textNamed: { "文字 \($0)" }, textPlaceholder: "文字",
+        removeAllLayers: "删除全部面板与图层", clearCanvas: "清空画布（连同底图）",
         menuPanel: "面板", newPanel: "新建面板", duplicatePanel: "复制面板", deletePanel: "删除面板",
         bringForward: "上移一层", sendBackward: "下移一层",
         menuLanguage: "语言", langSystem: "跟随系统"
@@ -237,6 +248,9 @@ extension Strings {
         dropAddsPhoto: "Dropping another image adds a collage layer (⌘O replaces the base)",
         layers: "Layers", newPanelShort: "Panel", toTop: "Bring to front", toBottom: "Send to back",
         detectedCorners: { "Image has \($0) px rounded corners — applied as the panel default" },
+        addText: "New Text", addTextHelp: "New text layer, without glass (⌘T)", newTextShort: "Text",
+        textNamed: { "Text \($0)" }, textPlaceholder: "Text",
+        removeAllLayers: "Delete All Panels and Layers", clearCanvas: "Clear Canvas (Including Image)",
         menuPanel: "Panel", newPanel: "New Panel", duplicatePanel: "Duplicate Panel", deletePanel: "Delete Panel",
         bringForward: "Bring Forward", sendBackward: "Send Backward",
         menuLanguage: "Language", langSystem: "System"
