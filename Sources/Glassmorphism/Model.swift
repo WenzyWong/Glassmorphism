@@ -91,16 +91,16 @@ struct TextStyle: Equatable {
     var fontFamily: String = ""
     var titleBold: Bool = true
     // 以下四個像素值是「寬度 = referenceWidth 的圖」上的預設，其他寬度按比例縮放
-    var titleSize: Double = 48
-    var subtitleSize: Double = 20
+    var titleSize: Double = 100
+    var subtitleSize: Double = 50
     var color: Color = .white
     var align: TextAlign = .center
-    var lineGap: Double = 8            // 標題與副標之間的間距
-    var padding: Double = 32           // 文字距面板邊緣的內縮
+    var lineGap: Double = 4            // 標題與副標之間的間距
+    var padding: Double = 17           // 文字距面板邊緣的內縮
 
-    /// Mac 全螢幕截圖的寬度（4K 外接螢幕，2048×1152 HiDPI → 4096 px）。
-    /// 字面值的字級在這個寬度上剛好，其他圖依寬度等比換算。
-    static let referenceWidth: Double = 4096
+    /// 實際試用校準過的圖寬：2166 px 寬的視窗截圖配標題 100、副標 50 剛好。
+    /// 其他圖依寬度等比換算（標題 ≈ 圖寬 4.6%，副標 ≈ 2.3%）。
+    static let referenceWidth: Double = 2166
 
     /// 文字尺寸依圖片寬度自適應：字面值 × 圖寬 / referenceWidth
     static func defaults(for size: CGSize) -> TextStyle {

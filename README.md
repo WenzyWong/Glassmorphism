@@ -103,9 +103,9 @@ Each panel has its own set.
 Defaults live in the property initialisers of `GlassStyle` (blur 15 px, tint 10%,
 noise 15%, border 3 px at 50%, shadow on at 69 px / 30%). These are absolute pixel values,
 so on a very small image they are clamped back into slider range by `ParamRange`. Text
-sizes scale with the image's width instead: the literals in `TextStyle` (title 48 px,
-subtitle 20 px) are what a 4096 px-wide full-screen Mac screenshot gets, and other widths
-scale proportionally.
+sizes scale with the image's width instead: the literals in `TextStyle` (title 100 px,
+subtitle 50 px) are what a 2166 px-wide image gets — roughly 4.6% and 2.3% of the width —
+and other widths scale proportionally.
 
 A text layer is a panel with `textOnly` set: it moves, resizes, snaps and stacks exactly
 like a panel, but draws only its text.

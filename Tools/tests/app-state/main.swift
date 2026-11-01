@@ -98,10 +98,10 @@ MainActor.assumeIsolated {
     flag("預設噪點 15%", state.panels[0].style.noiseAmount == 0.15)
 
     // 字級依圖寬換算：參考寬度上就是字面值，半寬就減半
-    let full = TextStyle.defaults(for: CGSize(width: TextStyle.referenceWidth, height: 2304))
-    flag("參考寬度上標題 48、副標 20", full.titleSize == 48 && full.subtitleSize == 20)
-    let half = TextStyle.defaults(for: CGSize(width: TextStyle.referenceWidth / 2, height: 1152))
-    flag("半寬時字級減半", half.titleSize == 24 && half.subtitleSize == 10)
+    let full = TextStyle.defaults(for: CGSize(width: TextStyle.referenceWidth, height: 2446))
+    flag("參考寬度上標題 100、副標 50", full.titleSize == 100 && full.subtitleSize == 50)
+    let half = TextStyle.defaults(for: CGSize(width: TextStyle.referenceWidth / 2, height: 1223))
+    flag("半寬時字級減半", half.titleSize == 50 && half.subtitleSize == 25)
     let strip = TextStyle.defaults(for: CGSize(width: 8000, height: 40))
     flag("細長條的字級夾在滑桿範圍內", strip.titleSize <= ParamRange.titleSize(40).upperBound)
 
